@@ -2,6 +2,16 @@ import requests
 import json
 from urlparse import urlparse
 import ConfigParser
+import sys, getopt
+
+# Read in any command-line config
+config_name = 'default'
+
+# TODO: Handle errors
+opts, args = getopt.getopt(sys.argv[1:], None ,["config="])
+for opt, arg in opts:
+    if opt == '--config':
+        config_name = arg
 
 # Pull config from user's home directory
 # TODO: Had to do this in current directory, not sure this has access to ~ by default
@@ -9,11 +19,11 @@ import ConfigParser
 
 config = ConfigParser.ConfigParser()
 config.read(".trellonextactions")
-section_name = 'config'
 
-board_id = config.get(section_name, 'board_id')
-application_key = config.get(section_name, 'application_key')
-auth_token = config.get(section_name, 'auth_token')
+board_id = config.get(config_name, 'board_id')
+# TODO: Probably don't need to make this user-configurable as it shouldn't change...
+application_key = config.get(config_name, 'application_key')
+auth_token = config.get(config_name, 'auth_token')
 
 # Get a list of Lists on the board
 response = requests.get('https://api.trello.com/1/boards/' + board_id + '/lists?cards=none&key=' + application_key + '&token=' + auth_token)
