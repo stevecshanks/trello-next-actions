@@ -58,27 +58,31 @@ print
 print
 
 for project_card in project_card_list:
-    # The description of each card should contain the URL
-    url = project_card['desc']
 
-    # Parse the URL to get the short link
-    url_bits = urlparse(url)
-    # URLs all seem to be of the form /x/xyz123/nice-description
-    path_bits = url_bits.path.split('/')
+    next_action_text = ' * ' + project_card['name'] + ' - '
 
-    # TODO: Handle missing URL or failed parse (create a Next Action to fix it, assuming one doesn't exist already?)
-    
-    short_id = path_bits[2]
+    try:
+        # The description of each card should contain the URL
+        url = project_card['desc']
 
-    todo_card_list = get_cards_in_list(short_id, 'Todo')
+        # Parse the URL to get the short link
+        url_bits = urlparse(url)
+        # URLs all seem to be of the form /x/xyz123/nice-description
+        path_bits = url_bits.path.split('/')
 
-    # TODO: Do we always get cards in correct order?
-    next_action_card = todo_card_list[0]
-    
-    # TODO: handle missing Next Action
+        short_id = path_bits[2]
+
+        todo_card_list = get_cards_in_list(short_id, 'Todo')
+
+        # TODO: Do we always get cards in correct order?
+        next_action_card = todo_card_list[0]
+        
+        next_action_text += next_action_card['name']
+    except:
+        next_action_text += 'ERROR - Failed to determine next action'
 
     # Spit out a sensible Next Action name
-    print ' * ' + project_card['name'] + ' - ' + next_action_card['name']
+    print next_action_text
 
 # Now print out all the non-project Next Actions so that there's a consolidated list
 next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
