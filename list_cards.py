@@ -45,15 +45,19 @@ for opt, arg in opts:
 config = ConfigParser.ConfigParser()
 config.read(".trellonextactions")
 
-board_id = config.get(config_name, 'board_id')
+gtd_board_id = config.get(config_name, 'board_id')
 # TODO: Probably don't need to make this user-configurable as it shouldn't change...
 application_key = config.get(config_name, 'application_key')
 auth_token = config.get(config_name, 'auth_token')
 
 # Get a list of all projects
-cards_json = get_cards_in_list(board_id, 'Projects')
+project_card_list = get_cards_in_list(gtd_board_id, 'Projects')
 
-for project_card in cards_json:
+# Mmmm, whitespace
+print
+print
+
+for project_card in project_card_list:
     # The description of each card should contain the URL
     url = project_card['desc']
 
@@ -66,12 +70,23 @@ for project_card in cards_json:
     
     short_id = path_bits[2]
 
-    todo_cards = get_cards_in_list(short_id, 'Todo')
+    todo_card_list = get_cards_in_list(short_id, 'Todo')
 
     # TODO: Do we always get cards in correct order?
-    next_action_card = todo_cards[0]
+    next_action_card = todo_card_list[0]
     
     # TODO: handle missing Next Action
 
     # Spit out a sensible Next Action name
-    print project_card['name'] + ' - ' + next_action_card['name']
+    print ' * ' + project_card['name'] + ' - ' + next_action_card['name']
+
+# Now print out all the non-project Next Actions so that there's a consolidated list
+next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
+
+for next_action_card in next_action_card_list:
+    print ' * ' + next_action_card['name']
+
+# Mmmm, whitespace
+print
+print
+
