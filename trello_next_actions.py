@@ -35,8 +35,11 @@ def setup_database():
 
 
 def trello_create_card(name, description):
-    # TODO Make this look up automatically
-    list_id = '586416e065011a16b0f86914'
+    try:
+        list_id = get_list_id(gtd_board_id, 'Next Actions')
+    except ValueError:
+        print_error_and_exit("Could not find ID for Next Actions list")
+
     data = {
         'name': name,
         'desc': description + "\r\n\r\nAuto-created by TrelloNextActions",
@@ -125,7 +128,7 @@ def trello_put_request(url, data):
         response = requests.put(url, data)
         return trello_handle_response(url, response)
     except:
-        print_error_and_exit("Failed API request to " + url)       
+        print_error_and_exit("Failed API request to " + url)
 
 
 def trello_handle_response(url, response):
@@ -141,7 +144,7 @@ def trello_handle_response(url, response):
     return json
 
 
-def get_cards_in_list(board_id, list_name):
+def get_list_id(board_id, list_name):
     lists_on_board = trello_get_request('https://api.trello.com/1/boards/'
                                         + board_id + '/lists?cards=none&key='
                                         + application_key + '&token='
@@ -156,6 +159,11 @@ def get_cards_in_list(board_id, list_name):
 
     if list_id is None:
         raise ValueError("No list with name '" + list_name + "' found")
+    return list_id
+
+
+def get_cards_in_list(board_id, list_name):
+    list_id = get_list_id(board_id, list_name)
 
     # List the cards on that list
     cards_in_list = trello_get_request('https://api.trello.com/1/lists/'
@@ -287,7 +295,7 @@ def main():
         next_action_list, error_list = get_next_action_list()
 
         print_list('Next Actions', next_action_list)
-        if (len(error_list) > 0):
+        if len(error_list) > 0:
             print_list('Errors', error_list)
     elif action == 'sync':
         message_list, error_list = sync_next_actions()
