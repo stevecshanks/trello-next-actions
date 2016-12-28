@@ -10,9 +10,24 @@ application_key = ""
 auth_token = ""
 gtd_board_id = ""
 
+db_file = 'trellonextactions.db'
+
 def print_error_and_exit(message):
     sys.stderr.write(message + "\n")
     sys.exit(1)
+
+def setup_database():
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+
+    c.execute('CREATE TABLE IF NOT EXISTS next_action (id INTEGER NOT NULL PRIMARY KEY, '
+              'project_board_id VARCHAR(255) NOT NULL, '
+              'project_next_action_id VARCHAR(255) NOT NULL, '
+              'gtd_next_action_id VARCHAR(255) NOT NULL)')
+    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS project_board ON next_action (project_board_id)')
+
+    conn.commit()
+    conn.close()
 
 def trello_api_request(url):
     try:
@@ -102,6 +117,17 @@ def get_next_action_list():
 def sync_next_actions():
     message_list = []
     error_list = []
+
+    next_action_per_project_list, next_action_per_project_error_list = get_next_action_per_project()
+    error_list += next_action_per_project_error_list
+
+    try:
+        setup_database()
+    except Exception as e:
+        print_error_and_exit("Error setting up DB: " + str(e))
+
+    for project_card, next_action_card in next_action_per_project_list:
+        pass
 
     return message_list, error_list
 
