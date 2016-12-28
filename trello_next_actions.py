@@ -50,9 +50,16 @@ def trello_create_card(name, description):
 
 
 def trello_delete_card(card_id):
-    print "Deleted card " + card_id
-    # TODO non-dummy version!
-    pass
+    # Note: Only archive cards, just in case they've been edited by the user
+    data = {
+        'value': 'true',
+        'key': application_key,
+        'token': auth_token
+    }
+
+    response = trello_put_request('https://api.trello.com/1/cards/'
+                                  + card_id + "/closed",
+                                  data)
 
 
 def sync_card(project_name, next_action_card):
@@ -111,6 +118,14 @@ def trello_post_request(url, data):
         return trello_handle_response(url, response)
     except:
         print_error_and_exit("Failed API request to " + url)
+
+
+def trello_put_request(url, data):
+    try:
+        response = requests.put(url, data)
+        return trello_handle_response(url, response)
+    except:
+        print_error_and_exit("Failed API request to " + url)       
 
 
 def trello_handle_response(url, response):
