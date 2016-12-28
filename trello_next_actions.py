@@ -116,6 +116,11 @@ def main():
                 config_name = arg
     except getopt.GetoptError as e:
         print_error_and_exit(str(e))
+
+    if len(args) > 1:
+        print_error_and_exit("Too many arguments supplied")
+    elif len(args) == 1:
+        action = args[0]
     
     try:
         load_config(config_name)
