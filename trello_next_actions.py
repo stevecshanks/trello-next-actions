@@ -39,7 +39,7 @@ def trello_create_card(name, description):
     list_id = '586416e065011a16b0f86914'
     data = {
         'name': name,
-        'desc': description,
+        'desc': description + "\r\n\r\nAuto-created by TrelloNextActions",
         'idList': list_id,
         'key': application_key,
         'token': auth_token
@@ -63,6 +63,8 @@ def trello_delete_card(card_id):
 
 
 def sync_card(project_name, next_action_card):
+    message_list = []
+
     # Do we have a next action for this project board?
     has_next_action = False
 
@@ -75,17 +77,14 @@ def sync_card(project_name, next_action_card):
     next_action = c.fetchone()
 
     if next_action is not None:
-        print "Found next action: " + next_action[1]
         # Is it the same as our current next action?
         if next_action_card['id'] == next_action[0]:
-            print "... but it's the same as our current action"
             has_next_action = True
         else:
-            # If not, delete from GTD board and database
-            print "Need to sync these up"
             trello_delete_card(next_action[1])
             c.execute('DELETE FROM next_action WHERE project_board_id = ?',
                       (next_action_card['idBoard'],))
+            message_list.append("Deleted card " + next_action_card['id'])
 
     # If no next action, create one and add to DB
     if has_next_action is False:
@@ -97,11 +96,12 @@ def sync_card(project_name, next_action_card):
                   'VALUES (?, ?, ?)',
                   (next_action_card['idBoard'], next_action_card['id'],
                    gtd_next_action_id))
+        message_list.append("Created card " + gtd_next_action_id)
 
     conn.commit()
     conn.close()
 
-    # TODO: error handling etc
+    return message_list
 
 
 def trello_get_request(url):
@@ -234,7 +234,8 @@ def sync_next_actions():
         print_error_and_exit("Error setting up DB: " + str(e))
 
     for project_card, next_action_card in per_project_list:
-        sync_card(project_card['name'], next_action_card)
+        my_message_list = sync_card(project_card['name'], next_action_card)
+        message_list += my_message_list
 
     return message_list, error_list
 
@@ -291,8 +292,9 @@ def main():
     elif action == 'sync':
         message_list, error_list = sync_next_actions()
 
-        print_list('Messages', message_list)
-        if (len(error_list) > 0):
+        if len(message_list) > 0:
+            print_list('Messages', message_list)
+        if len(error_list) > 0:
             print_list('Errors', error_list)
     else:
         print_error_and_exit("Unrecognised action '" + action + "'")
