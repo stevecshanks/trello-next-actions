@@ -3,6 +3,7 @@ import json
 import ConfigParser
 import sys
 import getopt
+import sqlite3
 from urlparse import urlparse
 
 application_key = ""
@@ -47,7 +48,7 @@ def get_cards_in_list(board_id, list_name):
 
     return cards_in_list
 
-def get_next_action_list():
+def get_next_action_per_project():
     next_action_list = []
     error_list = []
 
@@ -57,7 +58,6 @@ def get_next_action_list():
         print_error_and_exit(str(e))
 
     for project_card in project_card_list:
-        next_action_text = project_card['name'] + ' - '
         try:
             # The description of each card should contain the URL
             url = project_card['desc']
@@ -71,12 +71,25 @@ def get_next_action_list():
 
             if len(todo_card_list) > 0:
                 next_action_card = todo_card_list[0]
-                next_action_text += next_action_card['name']
-                next_action_list.append(next_action_text)
+                next_action_list.append([project_card, next_action_card])
             else:
                 error_list.append(project_card['name'] + " - Todo list is empty")
         except ValueError as e:
             error_list.append(project_card['name'] + " - " + str(e))
+
+    return next_action_list, error_list
+
+def get_next_action_list():
+    next_action_list = []
+    error_list = []
+
+    next_action_per_project_list, next_action_per_project_error_list = get_next_action_per_project()
+    error_list += next_action_per_project_error_list
+
+    for project_card, next_action_card in next_action_per_project_list:
+        next_action_text = project_card['name'] + ' - '
+        next_action_text += next_action_card['name']
+        next_action_list.append(next_action_text)
 
     # Now return all the non-project Next Actions so that there's a consolidated list
     next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
@@ -85,6 +98,12 @@ def get_next_action_list():
         next_action_list.append(next_action_card['name'])
 
     return next_action_list, error_list
+
+def sync_next_actions():
+    message_list = []
+    error_list = []
+
+    return message_list, error_list
 
 def load_config(config_name):
     global application_key
@@ -131,6 +150,12 @@ def main():
         next_action_list, error_list = get_next_action_list()
 
         print_list('Next Actions', next_action_list)
+        if (len(error_list) > 0):
+            print_list('Errors', error_list)
+    elif action == 'sync':
+        message_list, error_list = sync_next_actions()
+
+        print_list('Messages', message_list)
         if (len(error_list) > 0):
             print_list('Errors', error_list)
     else:
