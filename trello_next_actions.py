@@ -35,9 +35,18 @@ def setup_database():
 
 
 def trello_create_card(name, description):
-    print "Created card " + description
-    # TODO non-dummy version!
-    return description
+    # TODO Make this look up automatically
+    list_id = '586416e065011a16b0f86914'
+    data = {
+        'name': name,
+        'desc': description,
+        'idList': list_id,
+        'key': application_key,
+        'token': auth_token
+    }
+
+    response = trello_post_request('https://api.trello.com/1/cards/', data)
+    return response['id']
 
 
 def trello_delete_card(card_id):
@@ -88,12 +97,23 @@ def sync_card(project_name, next_action_card):
     # TODO: error handling etc
 
 
-def trello_api_request(url):
+def trello_get_request(url):
     try:
         response = requests.get(url)
+        return trello_handle_response(url, response)
     except:
         print_error_and_exit("Failed API request to " + url)
 
+
+def trello_post_request(url, data):
+    try:
+        response = requests.post(url, data)
+        return trello_handle_response(url, response)
+    except:
+        print_error_and_exit("Failed API request to " + url)
+
+
+def trello_handle_response(url, response):
     if response.status_code != 200:
         print_error_and_exit("HTTP " + str(response.status_code)
                              + " response from " + url)
@@ -107,7 +127,7 @@ def trello_api_request(url):
 
 
 def get_cards_in_list(board_id, list_name):
-    lists_on_board = trello_api_request('https://api.trello.com/1/boards/'
+    lists_on_board = trello_get_request('https://api.trello.com/1/boards/'
                                         + board_id + '/lists?cards=none&key='
                                         + application_key + '&token='
                                         + auth_token)
@@ -123,7 +143,7 @@ def get_cards_in_list(board_id, list_name):
         raise ValueError("No list with name '" + list_name + "' found")
 
     # List the cards on that list
-    cards_in_list = trello_api_request('https://api.trello.com/1/lists/'
+    cards_in_list = trello_get_request('https://api.trello.com/1/lists/'
                                        + list_id + '/cards?key='
                                        + application_key + '&token='
                                        + auth_token)
