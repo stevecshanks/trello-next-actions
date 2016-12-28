@@ -12,32 +12,39 @@ gtd_board_id = ""
 
 db_file = 'trellonextactions.db'
 
+
 def print_error_and_exit(message):
     sys.stderr.write(message + "\n")
     sys.exit(1)
+
 
 def setup_database():
     conn = sqlite3.connect(db_file)
     c = conn.cursor()
 
-    c.execute('CREATE TABLE IF NOT EXISTS next_action (id INTEGER NOT NULL PRIMARY KEY, '
+    c.execute('CREATE TABLE IF NOT EXISTS next_action ('
+              'id INTEGER NOT NULL PRIMARY KEY, '
               'project_board_id VARCHAR(255) NOT NULL, '
               'project_next_action_id VARCHAR(255) NOT NULL, '
               'gtd_next_action_id VARCHAR(255) NOT NULL)')
-    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS project_board ON next_action (project_board_id)')
+    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS project_board '
+              'ON next_action (project_board_id)')
 
     conn.commit()
     conn.close()
 
+
 def trello_create_card(name, description):
     print "Created card " + description
-    #TODO non-dummy version!
+    # TODO non-dummy version!
     return description
+
 
 def trello_delete_card(card_id):
     print "Deleted card " + card_id
-    #TODO non-dummy version!
+    # TODO non-dummy version!
     pass
+
 
 def sync_card(project_name, next_action_card):
     # Do we have a next action for this project board?
@@ -46,10 +53,12 @@ def sync_card(project_name, next_action_card):
     conn = sqlite3.connect(db_file)
     c = conn.cursor()
 
-    c.execute('SELECT project_next_action_id, gtd_next_action_id FROM next_action WHERE project_board_id = ?', (next_action_card['idBoard'],))
+    c.execute('SELECT project_next_action_id, gtd_next_action_id '
+              'FROM next_action WHERE project_board_id = ?',
+              (next_action_card['idBoard'],))
     next_action = c.fetchone()
 
-    if next_action != None:
+    if next_action is not None:
         print "Found next action: " + next_action[1]
         # Is it the same as our current next action?
         if next_action_card['id'] == next_action[0]:
@@ -59,18 +68,25 @@ def sync_card(project_name, next_action_card):
             # If not, delete from GTD board and database
             print "Need to sync these up"
             trello_delete_card(next_action[1])
-            c.execute('DELETE FROM next_action WHERE project_board_id = ?', (next_action_card['idBoard'],))
+            c.execute('DELETE FROM next_action WHERE project_board_id = ?',
+                      (next_action_card['idBoard'],))
 
     # If no next action, create one and add to DB
-    if has_next_action == False:
-        gtd_next_action_id = trello_create_card(project_name + " - " + next_action_card['name'], next_action_card['url'])
-        c.execute('INSERT INTO next_action (project_board_id, project_next_action_id, gtd_next_action_id) VALUES (?, ?, ?)',
-                  (next_action_card['idBoard'], next_action_card['id'], gtd_next_action_id))
+    if has_next_action is False:
+        gtd_next_action_id = trello_create_card(project_name + " - "
+                                                + next_action_card['name'],
+                                                next_action_card['url'])
+        c.execute('INSERT INTO next_action (project_board_id, '
+                  'project_next_action_id, gtd_next_action_id) '
+                  'VALUES (?, ?, ?)',
+                  (next_action_card['idBoard'], next_action_card['id'],
+                   gtd_next_action_id))
 
     conn.commit()
     conn.close()
 
-    #TODO: error handling etc
+    # TODO: error handling etc
+
 
 def trello_api_request(url):
     try:
@@ -79,7 +95,8 @@ def trello_api_request(url):
         print_error_and_exit("Failed API request to " + url)
 
     if response.status_code != 200:
-        print_error_and_exit("HTTP " + str(response.status_code) + " response from " + url)
+        print_error_and_exit("HTTP " + str(response.status_code)
+                             + " response from " + url)
 
     try:
         json = response.json()
@@ -88,9 +105,13 @@ def trello_api_request(url):
 
     return json
 
+
 def get_cards_in_list(board_id, list_name):
-    lists_on_board = trello_api_request('https://api.trello.com/1/boards/' + board_id + '/lists?cards=none&key=' + application_key + '&token=' + auth_token)
-    
+    lists_on_board = trello_api_request('https://api.trello.com/1/boards/'
+                                        + board_id + '/lists?cards=none&key='
+                                        + application_key + '&token='
+                                        + auth_token)
+
     # Find the named list
     list_id = None
     for l in lists_on_board:
@@ -98,13 +119,17 @@ def get_cards_in_list(board_id, list_name):
             list_id = l['id']
             break
 
-    if list_id == None:
+    if list_id is None:
         raise ValueError("No list with name '" + list_name + "' found")
 
     # List the cards on that list
-    cards_in_list = trello_api_request('https://api.trello.com/1/lists/' + list_id + '/cards?key=' + application_key + '&token=' + auth_token)
+    cards_in_list = trello_api_request('https://api.trello.com/1/lists/'
+                                       + list_id + '/cards?key='
+                                       + application_key + '&token='
+                                       + auth_token)
 
     return cards_in_list
+
 
 def get_next_action_per_project():
     next_action_list = []
@@ -131,25 +156,28 @@ def get_next_action_per_project():
                 next_action_card = todo_card_list[0]
                 next_action_list.append([project_card, next_action_card])
             else:
-                error_list.append(project_card['name'] + " - Todo list is empty")
+                error_list.append(project_card['name']
+                                  + " - Todo list is empty")
         except ValueError as e:
             error_list.append(project_card['name'] + " - " + str(e))
 
     return next_action_list, error_list
 
+
 def get_next_action_list():
     next_action_list = []
     error_list = []
 
-    next_action_per_project_list, next_action_per_project_error_list = get_next_action_per_project()
-    error_list += next_action_per_project_error_list
+    per_project_list, per_project_error_list = get_next_action_per_project()
+    error_list += per_project_error_list
 
-    for project_card, next_action_card in next_action_per_project_list:
+    for project_card, next_action_card in per_project_list:
         next_action_text = project_card['name'] + ' - '
         next_action_text += next_action_card['name']
         next_action_list.append(next_action_text)
 
-    # Now return all the non-project Next Actions so that there's a consolidated list
+    # Now return all the non-project Next Actions so that there's a
+    # consolidated list
     next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
 
     for next_action_card in next_action_card_list:
@@ -157,22 +185,24 @@ def get_next_action_list():
 
     return next_action_list, error_list
 
+
 def sync_next_actions():
     message_list = []
     error_list = []
 
-    next_action_per_project_list, next_action_per_project_error_list = get_next_action_per_project()
-    error_list += next_action_per_project_error_list
+    per_project_list, per_project_error_list = get_next_action_per_project()
+    error_list += per_project_error_list
 
     try:
         setup_database()
     except Exception as e:
         print_error_and_exit("Error setting up DB: " + str(e))
 
-    for project_card, next_action_card in next_action_per_project_list:
+    for project_card, next_action_card in per_project_list:
         sync_card(project_card['name'], next_action_card)
 
     return message_list, error_list
+
 
 def load_config(config_name):
     global application_key
@@ -186,6 +216,7 @@ def load_config(config_name):
     application_key = config.get(config_name, 'application_key')
     auth_token = config.get(config_name, 'auth_token')
 
+
 def print_list(name, card_list):
     print name + ":"
     print
@@ -193,12 +224,13 @@ def print_list(name, card_list):
         print " [ ] " + c
     print
 
+
 def main():
     config_name = 'default'
     action = 'list'
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "" ,["config="])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["config="])
         for opt, arg in opts:
             if opt == '--config':
                 config_name = arg
@@ -209,7 +241,7 @@ def main():
         print_error_and_exit("Too many arguments supplied")
     elif len(args) == 1:
         action = args[0]
-    
+
     try:
         load_config(config_name)
     except:
