@@ -29,6 +29,49 @@ def setup_database():
     conn.commit()
     conn.close()
 
+def trello_create_card(name, description):
+    print "Created card " + description
+    #TODO non-dummy version!
+    return description
+
+def trello_delete_card(card_id):
+    print "Deleted card " + card_id
+    #TODO non-dummy version!
+    pass
+
+def sync_card(project_name, next_action_card):
+    # Do we have a next action for this project board?
+    has_next_action = False
+
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+
+    c.execute('SELECT project_next_action_id, gtd_next_action_id FROM next_action WHERE project_board_id = ?', (next_action_card['idBoard'],))
+    next_action = c.fetchone()
+
+    if next_action != None:
+        print "Found next action: " + next_action[1]
+        # Is it the same as our current next action?
+        if next_action_card['id'] == next_action[0]:
+            print "... but it's the same as our current action"
+            has_next_action = True
+        else:
+            # If not, delete from GTD board and database
+            print "Need to sync these up"
+            trello_delete_card(next_action[1])
+            c.execute('DELETE FROM next_action WHERE project_board_id = ?', (next_action_card['idBoard'],))
+
+    # If no next action, create one and add to DB
+    if has_next_action == False:
+        gtd_next_action_id = trello_create_card(project_name + " - " + next_action_card['name'], next_action_card['url'])
+        c.execute('INSERT INTO next_action (project_board_id, project_next_action_id, gtd_next_action_id) VALUES (?, ?, ?)',
+                  (next_action_card['idBoard'], next_action_card['id'], gtd_next_action_id))
+
+    conn.commit()
+    conn.close()
+
+    #TODO: error handling etc
+
 def trello_api_request(url):
     try:
         response = requests.get(url)
@@ -127,7 +170,7 @@ def sync_next_actions():
         print_error_and_exit("Error setting up DB: " + str(e))
 
     for project_card, next_action_card in next_action_per_project_list:
-        pass
+        sync_card(project_card['name'], next_action_card)
 
     return message_list, error_list
 
