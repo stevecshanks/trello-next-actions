@@ -9,41 +9,52 @@ application_key = ""
 auth_token = ""
 gtd_board_id = ""
 
+def print_error_and_exit(message):
+    sys.stderr.write(message + "\n")
+    sys.exit(1)
 
+def trello_api_request(url):
+    try:
+        response = requests.get(url)
+    except:
+        print_error_and_exit("Failed API request to " + url)
 
+    if response.status_code != 200:
+        print_error_and_exit("HTTP " + str(response.status_code) + " response from " + url)
 
+    try:
+        json = response.json()
+    except:
+        print_error_and_exit("Could not parse JSON response from " + url)
 
-
+    return json
 
 def get_cards_in_list(board_id, list_name):
-    # Get a list of Lists on the board
-    response = requests.get('https://api.trello.com/1/boards/' + board_id + '/lists?cards=none&key=' + application_key + '&token=' + auth_token)
-
-    lists_json = response.json();
+    lists_on_board = trello_api_request('https://api.trello.com/1/boards/' + board_id + '/lists?cards=none&key=' + application_key + '&token=' + auth_token)
     
-    # TODO: handle failed response
-
     # Find the named list
     list_id = None
-    for l in lists_json:
+    for l in lists_on_board:
         if l['name'] == list_name:
             list_id = l['id']
             break
 
-    # TODO: handle missing list
+    if list_id == None:
+        raise ValueError("No list with name '" + list_name + "' found")
 
     # List the cards on that list
-    response = requests.get('https://api.trello.com/1/lists/' + list_id + '/cards?key=' + application_key + '&token=' + auth_token)
+    cards_in_list = trello_api_request('https://api.trello.com/1/lists/' + list_id + '/cards?key=' + application_key + '&token=' + auth_token)
 
-    # TODO: handle failed response
-
-    return response.json()
+    return cards_in_list
 
 def get_next_action_list():
     next_action_list = []
     error_list = []
 
-    project_card_list = get_cards_in_list(gtd_board_id, 'Projects')
+    try:
+        project_card_list = get_cards_in_list(gtd_board_id, 'Projects')
+    except ValueError as e:
+        print_error_and_exit(str(e))
 
     for project_card in project_card_list:
         next_action_text = project_card['name'] + ' - '
@@ -57,12 +68,15 @@ def get_next_action_list():
             path_bits = url_bits.path.split('/')
             short_id = path_bits[2]
             todo_card_list = get_cards_in_list(short_id, 'Todo')
-            next_action_card = todo_card_list[0]
-            next_action_text += next_action_card['name']
 
-            next_action_list.append(next_action_text)
-        except:
-            error_list.append("Failed to determine next action for '" + project_card['name'] + "'")
+            if len(todo_card_list) > 0:
+                next_action_card = todo_card_list[0]
+                next_action_text += next_action_card['name']
+                next_action_list.append(next_action_text)
+            else:
+                error_list.append(project_card['name'] + " - Todo list is empty")
+        except ValueError as e:
+            error_list.append(project_card['name'] + " - " + str(e))
 
     # Now return all the non-project Next Actions so that there's a consolidated list
     next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
@@ -71,12 +85,6 @@ def get_next_action_list():
         next_action_list.append(next_action_card['name'])
 
     return next_action_list, error_list
-
-
-
-def print_error_and_exit(message):
-    sys.stderr.write(message + "\n")
-    sys.exit(1)
 
 def load_config(config_name):
     global application_key
