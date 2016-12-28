@@ -1,8 +1,19 @@
 import requests
 import json
-from urlparse import urlparse
 import ConfigParser
-import sys, getopt
+import sys
+import getopt
+from urlparse import urlparse
+
+application_key = ""
+auth_token = ""
+gtd_board_id = ""
+
+
+
+
+
+
 
 def get_cards_in_list(board_id, list_name):
     # Get a list of Lists on the board
@@ -28,69 +39,89 @@ def get_cards_in_list(board_id, list_name):
 
     return response.json()
 
+def get_next_action_list():
+    next_action_list = []
+    error_list = []
 
-# Read in any command-line config
-config_name = 'default'
+    project_card_list = get_cards_in_list(gtd_board_id, 'Projects')
 
-# TODO: Handle errors
-opts, args = getopt.getopt(sys.argv[1:], None ,["config="])
-for opt, arg in opts:
-    if opt == '--config':
-        config_name = arg
+    for project_card in project_card_list:
+        next_action_text = project_card['name'] + ' - '
+        try:
+            # The description of each card should contain the URL
+            url = project_card['desc']
 
-# Pull config from user's home directory
-# TODO: Had to do this in current directory, not sure this has access to ~ by default
-# TODO: Make this cross-platform
+            # Parse the URL to get the short link
+            url_bits = urlparse(url)
+            # URLs all seem to be of the form /x/xyz123/nice-description
+            path_bits = url_bits.path.split('/')
+            short_id = path_bits[2]
+            todo_card_list = get_cards_in_list(short_id, 'Todo')
+            next_action_card = todo_card_list[0]
+            next_action_text += next_action_card['name']
 
-config = ConfigParser.ConfigParser()
-config.read(".trellonextactions")
+            next_action_list.append(next_action_text)
+        except:
+            error_list.append("Failed to determine next action for '" + project_card['name'] + "'")
 
-gtd_board_id = config.get(config_name, 'board_id')
-# TODO: Probably don't need to make this user-configurable as it shouldn't change...
-application_key = config.get(config_name, 'application_key')
-auth_token = config.get(config_name, 'auth_token')
+    # Now return all the non-project Next Actions so that there's a consolidated list
+    next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
 
-# Get a list of all projects
-project_card_list = get_cards_in_list(gtd_board_id, 'Projects')
+    for next_action_card in next_action_card_list:
+        next_action_list.append(next_action_card['name'])
 
-# Mmmm, whitespace
-print
-print
+    return next_action_list, error_list
 
-for project_card in project_card_list:
 
-    next_action_text = ' * ' + project_card['name'] + ' - '
+
+def print_error_and_exit(message):
+    sys.stderr.write(message + "\n")
+    sys.exit(1)
+
+def load_config(config_name):
+    global application_key
+    global auth_token
+    global gtd_board_id
+
+    config = ConfigParser.ConfigParser()
+    config.read(".trellonextactions")
+
+    gtd_board_id = config.get(config_name, 'board_id')
+    application_key = config.get(config_name, 'application_key')
+    auth_token = config.get(config_name, 'auth_token')
+
+def print_list(name, card_list):
+    print name + ":"
+    print
+    for c in card_list:
+        print " [ ] " + c
+    print
+
+def main():
+    config_name = 'default'
+    action = 'list'
 
     try:
-        # The description of each card should contain the URL
-        url = project_card['desc']
-
-        # Parse the URL to get the short link
-        url_bits = urlparse(url)
-        # URLs all seem to be of the form /x/xyz123/nice-description
-        path_bits = url_bits.path.split('/')
-
-        short_id = path_bits[2]
-
-        todo_card_list = get_cards_in_list(short_id, 'Todo')
-
-        # TODO: Do we always get cards in correct order?
-        next_action_card = todo_card_list[0]
-        
-        next_action_text += next_action_card['name']
+        opts, args = getopt.getopt(sys.argv[1:], "" ,["config="])
+        for opt, arg in opts:
+            if opt == '--config':
+                config_name = arg
+    except getopt.GetoptError as e:
+        print_error_and_exit(str(e))
+    
+    try:
+        load_config(config_name)
     except:
-        next_action_text += 'ERROR - Failed to determine next action'
+        print_error_and_exit("Failed to load config '" + config_name + "'")
 
-    # Spit out a sensible Next Action name
-    print next_action_text
+    if action == 'list':
+        next_action_list, error_list = get_next_action_list()
 
-# Now print out all the non-project Next Actions so that there's a consolidated list
-next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
+        print_list('Next Actions', next_action_list)
+        if (len(error_list) > 0):
+            print_list('Errors', error_list)
+    else:
+        print_error_and_exit("Unrecognised action '" + action + "'")
 
-for next_action_card in next_action_card_list:
-    print ' * ' + next_action_card['name']
-
-# Mmmm, whitespace
-print
-print
-
+if __name__ == '__main__':
+    sys.exit(main())
