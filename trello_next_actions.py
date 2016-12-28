@@ -3,24 +3,138 @@ import json
 import ConfigParser
 import sys
 import getopt
+import sqlite3
 from urlparse import urlparse
 
 application_key = ""
 auth_token = ""
 gtd_board_id = ""
 
+db_file = 'trellonextactions.db'
+
+
 def print_error_and_exit(message):
     sys.stderr.write(message + "\n")
     sys.exit(1)
 
-def trello_api_request(url):
+
+def setup_database():
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+
+    c.execute('CREATE TABLE IF NOT EXISTS next_action ('
+              'id INTEGER NOT NULL PRIMARY KEY, '
+              'project_board_id VARCHAR(255) NOT NULL, '
+              'project_next_action_id VARCHAR(255) NOT NULL, '
+              'gtd_next_action_id VARCHAR(255) NOT NULL)')
+    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS project_board '
+              'ON next_action (project_board_id)')
+
+    conn.commit()
+    conn.close()
+
+
+def trello_create_card(name, description):
+    try:
+        list_id = get_list_id(gtd_board_id, 'Next Actions')
+    except ValueError:
+        print_error_and_exit("Could not find ID for Next Actions list")
+
+    data = {
+        'name': name,
+        'desc': description + "\r\n\r\nAuto-created by TrelloNextActions",
+        'idList': list_id,
+        'key': application_key,
+        'token': auth_token
+    }
+
+    response = trello_post_request('https://api.trello.com/1/cards/', data)
+    return response['id']
+
+
+def trello_delete_card(card_id):
+    # Note: Only archive cards, just in case they've been edited by the user
+    data = {
+        'value': 'true',
+        'key': application_key,
+        'token': auth_token
+    }
+
+    response = trello_put_request('https://api.trello.com/1/cards/'
+                                  + card_id + "/closed",
+                                  data)
+
+
+def sync_card(project_name, next_action_card):
+    message_list = []
+
+    # Do we have a next action for this project board?
+    has_next_action = False
+
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+
+    c.execute('SELECT project_next_action_id, gtd_next_action_id '
+              'FROM next_action WHERE project_board_id = ?',
+              (next_action_card['idBoard'],))
+    next_action = c.fetchone()
+
+    if next_action is not None:
+        # Is it the same as our current next action?
+        if next_action_card['id'] == next_action[0]:
+            has_next_action = True
+        else:
+            trello_delete_card(next_action[1])
+            c.execute('DELETE FROM next_action WHERE project_board_id = ?',
+                      (next_action_card['idBoard'],))
+            message_list.append("Deleted card " + next_action_card['id'])
+
+    # If no next action, create one and add to DB
+    if has_next_action is False:
+        gtd_next_action_id = trello_create_card(project_name + " - "
+                                                + next_action_card['name'],
+                                                next_action_card['url'])
+        c.execute('INSERT INTO next_action (project_board_id, '
+                  'project_next_action_id, gtd_next_action_id) '
+                  'VALUES (?, ?, ?)',
+                  (next_action_card['idBoard'], next_action_card['id'],
+                   gtd_next_action_id))
+        message_list.append("Created card " + gtd_next_action_id)
+
+    conn.commit()
+    conn.close()
+
+    return message_list
+
+
+def trello_get_request(url):
     try:
         response = requests.get(url)
+        return trello_handle_response(url, response)
     except:
         print_error_and_exit("Failed API request to " + url)
 
+
+def trello_post_request(url, data):
+    try:
+        response = requests.post(url, data)
+        return trello_handle_response(url, response)
+    except:
+        print_error_and_exit("Failed API request to " + url)
+
+
+def trello_put_request(url, data):
+    try:
+        response = requests.put(url, data)
+        return trello_handle_response(url, response)
+    except:
+        print_error_and_exit("Failed API request to " + url)
+
+
+def trello_handle_response(url, response):
     if response.status_code != 200:
-        print_error_and_exit("HTTP " + str(response.status_code) + " response from " + url)
+        print_error_and_exit("HTTP " + str(response.status_code)
+                             + " response from " + url)
 
     try:
         json = response.json()
@@ -29,9 +143,13 @@ def trello_api_request(url):
 
     return json
 
-def get_cards_in_list(board_id, list_name):
-    lists_on_board = trello_api_request('https://api.trello.com/1/boards/' + board_id + '/lists?cards=none&key=' + application_key + '&token=' + auth_token)
-    
+
+def get_list_id(board_id, list_name):
+    lists_on_board = trello_get_request('https://api.trello.com/1/boards/'
+                                        + board_id + '/lists?cards=none&key='
+                                        + application_key + '&token='
+                                        + auth_token)
+
     # Find the named list
     list_id = None
     for l in lists_on_board:
@@ -39,15 +157,24 @@ def get_cards_in_list(board_id, list_name):
             list_id = l['id']
             break
 
-    if list_id == None:
+    if list_id is None:
         raise ValueError("No list with name '" + list_name + "' found")
+    return list_id
+
+
+def get_cards_in_list(board_id, list_name):
+    list_id = get_list_id(board_id, list_name)
 
     # List the cards on that list
-    cards_in_list = trello_api_request('https://api.trello.com/1/lists/' + list_id + '/cards?key=' + application_key + '&token=' + auth_token)
+    cards_in_list = trello_get_request('https://api.trello.com/1/lists/'
+                                       + list_id + '/cards?key='
+                                       + application_key + '&token='
+                                       + auth_token)
 
     return cards_in_list
 
-def get_next_action_list():
+
+def get_next_action_per_project():
     next_action_list = []
     error_list = []
 
@@ -57,7 +184,6 @@ def get_next_action_list():
         print_error_and_exit(str(e))
 
     for project_card in project_card_list:
-        next_action_text = project_card['name'] + ' - '
         try:
             # The description of each card should contain the URL
             url = project_card['desc']
@@ -71,20 +197,56 @@ def get_next_action_list():
 
             if len(todo_card_list) > 0:
                 next_action_card = todo_card_list[0]
-                next_action_text += next_action_card['name']
-                next_action_list.append(next_action_text)
+                next_action_list.append([project_card, next_action_card])
             else:
-                error_list.append(project_card['name'] + " - Todo list is empty")
+                error_list.append(project_card['name']
+                                  + " - Todo list is empty")
         except ValueError as e:
             error_list.append(project_card['name'] + " - " + str(e))
 
-    # Now return all the non-project Next Actions so that there's a consolidated list
+    return next_action_list, error_list
+
+
+def get_next_action_list():
+    next_action_list = []
+    error_list = []
+
+    per_project_list, per_project_error_list = get_next_action_per_project()
+    error_list += per_project_error_list
+
+    for project_card, next_action_card in per_project_list:
+        next_action_text = project_card['name'] + ' - '
+        next_action_text += next_action_card['name']
+        next_action_list.append(next_action_text)
+
+    # Now return all the non-project Next Actions so that there's a
+    # consolidated list
     next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
 
     for next_action_card in next_action_card_list:
         next_action_list.append(next_action_card['name'])
 
     return next_action_list, error_list
+
+
+def sync_next_actions():
+    message_list = []
+    error_list = []
+
+    per_project_list, per_project_error_list = get_next_action_per_project()
+    error_list += per_project_error_list
+
+    try:
+        setup_database()
+    except Exception as e:
+        print_error_and_exit("Error setting up DB: " + str(e))
+
+    for project_card, next_action_card in per_project_list:
+        my_message_list = sync_card(project_card['name'], next_action_card)
+        message_list += my_message_list
+
+    return message_list, error_list
+
 
 def load_config(config_name):
     global application_key
@@ -98,6 +260,7 @@ def load_config(config_name):
     application_key = config.get(config_name, 'application_key')
     auth_token = config.get(config_name, 'auth_token')
 
+
 def print_list(name, card_list):
     print name + ":"
     print
@@ -105,18 +268,24 @@ def print_list(name, card_list):
         print " [ ] " + c
     print
 
+
 def main():
     config_name = 'default'
     action = 'list'
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "" ,["config="])
+        opts, args = getopt.getopt(sys.argv[1:], "", ["config="])
         for opt, arg in opts:
             if opt == '--config':
                 config_name = arg
     except getopt.GetoptError as e:
         print_error_and_exit(str(e))
-    
+
+    if len(args) > 1:
+        print_error_and_exit("Too many arguments supplied")
+    elif len(args) == 1:
+        action = args[0]
+
     try:
         load_config(config_name)
     except:
@@ -126,7 +295,14 @@ def main():
         next_action_list, error_list = get_next_action_list()
 
         print_list('Next Actions', next_action_list)
-        if (len(error_list) > 0):
+        if len(error_list) > 0:
+            print_list('Errors', error_list)
+    elif action == 'sync':
+        message_list, error_list = sync_next_actions()
+
+        if len(message_list) > 0:
+            print_list('Messages', message_list)
+        if len(error_list) > 0:
             print_list('Errors', error_list)
     else:
         print_error_and_exit("Unrecognised action '" + action + "'")
