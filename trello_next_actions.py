@@ -167,9 +167,9 @@ def trello_handle_response(url, response):
 
 def get_list_id(board_id, list_name):
     lists_on_board = trello_get_request('https://api.trello.com/1/boards/'
-                                        + board_id + '/lists?cards=none&key='
-                                        + application_key + '&token='
-                                        + auth_token)
+                                        + board_id + '/lists?cards=none'
+                                        + '&key=' + application_key
+                                        + '&token=' + auth_token)
 
     # Find the named list
     list_id = None
@@ -188,9 +188,9 @@ def get_cards_in_list(board_id, list_name):
 
     # List the cards on that list
     cards_in_list = trello_get_request('https://api.trello.com/1/lists/'
-                                       + list_id + '/cards?key='
-                                       + application_key + '&token='
-                                       + auth_token)
+                                       + list_id + '/cards'
+                                       + '?key=' + application_key
+                                       + '&token=' + auth_token)
 
     return cards_in_list
 
@@ -248,6 +248,23 @@ def get_next_action_list():
         next_action_list.append(next_action_card['name'])
 
     return next_action_list, error_list
+
+
+def get_owned_list():
+    owned_list = []
+
+    card_list = trello_get_request('https://api.trello.com/1/members/me/cards/'
+                                   + '?key=' + application_key
+                                   + '&token=' + auth_token)
+    for card in card_list:
+        board = trello_get_request('https://api.trello.com/1/boards/'
+                                   + card['idBoard']
+                                   + '?key=' + application_key
+                                   + '&token=' + auth_token)
+
+        owned_list.append(board['name'] + " - " + card['name'])
+
+    return owned_list
 
 
 def sync_next_actions():
@@ -318,6 +335,9 @@ def main():
         print_list('Next Actions', next_action_list)
         if len(error_list) > 0:
             print_list('Errors', error_list)
+
+        print_list("Owned Cards", get_owned_list())
+
     elif action == 'sync':
         message_list, error_list = sync_next_actions()
 
@@ -325,9 +345,11 @@ def main():
             print_list('Messages', message_list)
         if len(error_list) > 0:
             print_list('Errors', error_list)
+
     elif action == 'reset':
         message_list = reset()
         print_list("Reset", message_list)
+
     else:
         print_error_and_exit("Unrecognised action '" + action + "'")
 
