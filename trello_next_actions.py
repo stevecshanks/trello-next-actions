@@ -88,7 +88,7 @@ def sync_card(project_name, next_action_card):
             trello_delete_card(next_action[1])
             c.execute('DELETE FROM next_action WHERE project_board_id = ?',
                       (next_action_card['idBoard'],))
-            message_list.append("Deleted card " + next_action_card['id'])
+            message_list.append("Archived card " + next_action_card['id'])
 
     # If no next action, create one and add to DB
     if has_next_action is False:
@@ -101,6 +101,26 @@ def sync_card(project_name, next_action_card):
                   (next_action_card['idBoard'], next_action_card['id'],
                    gtd_next_action_id))
         message_list.append("Created card " + gtd_next_action_id)
+
+    conn.commit()
+    conn.close()
+
+    return message_list
+
+
+def reset():
+    message_list = []
+
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+
+    c.execute('SELECT gtd_next_action_id FROM next_action')
+    next_action_list = c.fetchall()
+    for next_action in next_action_list:
+        trello_delete_card(next_action[0])
+        c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
+                  (next_action[0],))
+        message_list.append("Archived card " + next_action[0])
 
     conn.commit()
     conn.close()
@@ -305,6 +325,9 @@ def main():
             print_list('Messages', message_list)
         if len(error_list) > 0:
             print_list('Errors', error_list)
+    elif action == 'reset':
+        message_list = reset()
+        print_list("Reset", message_list)
     else:
         print_error_and_exit("Unrecognised action '" + action + "'")
 
