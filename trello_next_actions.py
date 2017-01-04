@@ -28,7 +28,7 @@ def setup_database():
               'project_board_id VARCHAR(255) NOT NULL, '
               'project_next_action_id VARCHAR(255) NOT NULL, '
               'gtd_next_action_id VARCHAR(255) NOT NULL)')
-    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS project_board '
+    c.execute('CREATE INDEX IF NOT EXISTS project_board '
               'ON next_action (project_board_id)')
 
     conn.commit()
@@ -250,21 +250,29 @@ def get_next_action_list():
     return next_action_list, error_list
 
 
-def get_owned_list():
+def sync_owned_cards():
+    message_list = []
+    error_list = []
+
     owned_list = []
+
+    board_id_cache = {}
 
     card_list = trello_get_request('https://api.trello.com/1/members/me/cards/'
                                    + '?key=' + application_key
                                    + '&token=' + auth_token)
     for card in card_list:
-        board = trello_get_request('https://api.trello.com/1/boards/'
-                                   + card['idBoard']
-                                   + '?key=' + application_key
-                                   + '&token=' + auth_token)
+        board_id = card['idBoard']
+        if board_id not in board_id_cache:
+            board = trello_get_request('https://api.trello.com/1/boards/'
+                                       + card['idBoard']
+                                       + '?key=' + application_key
+                                       + '&token=' + auth_token)
+            board_id_cache[board_id] = board
 
         owned_list.append(board['name'] + " - " + card['name'])
 
-    return owned_list
+    return message_list, error_list
 
 
 def sync_next_actions():
@@ -273,11 +281,6 @@ def sync_next_actions():
 
     per_project_list, per_project_error_list = get_next_action_per_project()
     error_list += per_project_error_list
-
-    try:
-        setup_database()
-    except Exception as e:
-        print_error_and_exit("Error setting up DB: " + str(e))
 
     for project_card, next_action_card in per_project_list:
         my_message_list = sync_card(project_card['name'], next_action_card)
@@ -329,14 +332,17 @@ def main():
     except:
         print_error_and_exit("Failed to load config '" + config_name + "'")
 
+    try:
+        setup_database()
+    except Exception as e:
+        print_error_and_exit("Error setting up DB: " + str(e))
+
     if action == 'list':
         next_action_list, error_list = get_next_action_list()
 
         print_list('Next Actions', next_action_list)
         if len(error_list) > 0:
             print_list('Errors', error_list)
-
-        print_list("Owned Cards", get_owned_list())
 
     elif action == 'sync':
         message_list, error_list = sync_next_actions()
