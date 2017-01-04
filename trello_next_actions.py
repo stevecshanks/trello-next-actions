@@ -28,8 +28,12 @@ def setup_database():
               'project_board_id VARCHAR(255) NOT NULL, '
               'project_next_action_id VARCHAR(255) NOT NULL, '
               'gtd_next_action_id VARCHAR(255) NOT NULL)')
-    c.execute('CREATE INDEX IF NOT EXISTS project_board '
+    c.execute('CREATE INDEX IF NOT EXISTS project_board_id '
               'ON next_action (project_board_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS project_next_action_id '
+              'ON next_action (project_next_action_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS gtd_next_action_id '
+              'ON next_action (gtd_next_action_id)')
 
     conn.commit()
     conn.close()
@@ -66,44 +70,54 @@ def trello_delete_card(card_id):
                                   data)
 
 
-def sync_card(project_name, next_action_card):
+def sync_board(board_id, board_name, next_action_card_list):
     message_list = []
 
-    # Do we have a next action for this project board?
-    has_next_action = False
+    # Figure out what cards already exist and so need no action
+    exclude_list = []
 
-    conn = sqlite3.connect(db_file)
-    c = conn.cursor()
+    for next_action_card in next_action_list:
+        conn = sqlite3.connect(db_file)
+        c = conn.cursor()
 
-    c.execute('SELECT project_next_action_id, gtd_next_action_id '
-              'FROM next_action WHERE project_board_id = ?',
-              (next_action_card['idBoard'],))
-    next_action = c.fetchone()
+        c.execute('SELECT id '
+                  'FROM next_action WHERE project_board_id = ? '
+                  'AND project_next_action_id = ?',
+                  (board_id, next_action_card['id']))
+        next_action = c.fetchone()
 
-    if next_action is not None:
-        # Is it the same as our current next action?
-        if next_action_card['id'] == next_action[0]:
-            has_next_action = True
-        else:
-            trello_delete_card(next_action[1])
-            c.execute('DELETE FROM next_action WHERE project_board_id = ?',
-                      (next_action_card['idBoard'],))
-            message_list.append("Archived card " + next_action_card['id'])
+        if next_action is not None:
+            exclude_list.append(next_action_card['id'])
 
-    # If no next action, create one and add to DB
-    if has_next_action is False:
-        gtd_next_action_id = trello_create_card(project_name + " - "
-                                                + next_action_card['name'],
-                                                next_action_card['url'])
-        c.execute('INSERT INTO next_action (project_board_id, '
-                  'project_next_action_id, gtd_next_action_id) '
-                  'VALUES (?, ?, ?)',
-                  (next_action_card['idBoard'], next_action_card['id'],
-                   gtd_next_action_id))
-        message_list.append("Created card " + gtd_next_action_id)
+    # Delete everything else for this project board
+    delete_query = ('SELECT gtd_next_action_id FROM next_action'
+                    'WHERE project_board_id = ? ')
+    if len(exclude_list):
+        placeholder_string = ','.join('?' * len(exclude_list))
+        delete_query += ('AND project_next_action_id NOT IN ('
+                         + placeholder_string + ')')
+    c.excecute(delete_query, exclude_list)
+    delete_list = c.fetchall()
 
-    conn.commit()
-    conn.close()
+    for delete_row in delete_list:
+        trello_delete_card(delete_row[0])
+        c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
+                  (delete_row[0],))
+        message_list.append(board_name + ": Archived card " + delete_row[0])
+
+    # Create any new cards
+    for next_action_card in next_action_card_list:
+        if next_action_card['id'] not in exclude_list:
+            gtd_next_action_id = trello_create_card(board_name + " - "
+                                                    + next_action_card['name'],
+                                                    next_action_card['url'])
+            c.execute('INSERT INTO next_action (project_board_id, '
+                      'project_next_action_id, gtd_next_action_id) '
+                      'VALUES (?, ?, ?)',
+                      (board_id, next_action_card['id'],
+                       gtd_next_action_id))
+            message_list.append(board_name + ": Created card "
+                                + gtd_next_action_id)
 
     return message_list
 
