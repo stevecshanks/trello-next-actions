@@ -91,23 +91,23 @@ def sync_board(board):
             exclude_list.append(next_action_card['id'])
 
     # Delete everything else for this project board
-    delete_query = ('SELECT gtd_next_action_id FROM next_action '
-                    'WHERE project_board_id = ? ')
+    to_delete_query = ('SELECT gtd_next_action_id FROM next_action '
+                       'WHERE project_board_id = ? ')
     parameter_list = [board.id]
     if len(exclude_list):
         placeholder_string = ','.join('?' * len(exclude_list))
-        delete_query += ('AND project_next_action_id NOT IN ('
-                         + placeholder_string + ')')
+        to_delete_query += ('AND project_next_action_id NOT IN ('
+                            + placeholder_string + ')')
         parameter_list += exclude_list
 
-    c.execute(delete_query, tuple(parameter_list))
-    delete_list = c.fetchall()
+    c.execute(to_delete_query, tuple(parameter_list))
+    to_delete_list = c.fetchall()
 
-    for delete_row in delete_list:
-        trello_delete_card(delete_row[0])
+    for to_delete_row in to_delete_list:
+        trello_delete_card(to_delete_row[0])
         c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
-                  (delete_row[0],))
-        message_list.append(board.name + ": Archived card " + delete_row[0])
+                  (to_delete_row[0],))
+        message_list.append(board.name + ": Archived card " + to_delete_row[0])
 
     # Create any new cards
     for next_action_card in board.nextActionList:
@@ -121,6 +121,9 @@ def sync_board(board):
                       (board.id, next_action_card['id'], gtd_next_action_id))
             message_list.append(board.name + ": Created card "
                                 + gtd_next_action_id)
+
+    conn.commit()
+    conn.close()
 
     return message_list
 
