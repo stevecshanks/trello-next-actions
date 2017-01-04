@@ -5,6 +5,7 @@ import ConfigParser
 import sys
 import getopt
 import sqlite3
+from board import Board
 from urlparse import urlparse
 
 application_key = ""
@@ -70,13 +71,20 @@ def trello_delete_card(card_id):
                                   data)
 
 
-def sync_board(board_id, board_name, next_action_card_list):
+def sync_board(board):
+    name_list = []
+    for c in board.nextActionList:
+        name_list.append(c['name'])
+
+    print_list("sync_board called for " + board.name, name_list)
+    return []
+
     message_list = []
 
     # Figure out what cards already exist and so need no action
     exclude_list = []
 
-    for next_action_card in next_action_list:
+    for next_action_card in next_action_card_list:
         conn = sqlite3.connect(db_file)
         c = conn.cursor()
 
@@ -264,41 +272,44 @@ def get_next_action_list():
     return next_action_list, error_list
 
 
-def sync_owned_cards():
-    message_list = []
-    error_list = []
-
-    owned_list = []
-
-    board_id_cache = {}
+def get_boards_with_owned_cards():
+    board_map = {}
 
     card_list = trello_get_request('https://api.trello.com/1/members/me/cards/'
                                    + '?key=' + application_key
                                    + '&token=' + auth_token)
     for card in card_list:
         board_id = card['idBoard']
-        if board_id not in board_id_cache:
+        if board_id not in board_map:
             board = trello_get_request('https://api.trello.com/1/boards/'
                                        + card['idBoard']
                                        + '?key=' + application_key
                                        + '&token=' + auth_token)
-            board_id_cache[board_id] = board
+            board_map[board_id] = Board(board_id, board['name'])
 
-        owned_list.append(board['name'] + " - " + card['name'])
+        board_map[board_id].nextActionList.append(card)
 
-    return message_list, error_list
+    return board_map
 
 
 def sync_next_actions():
     message_list = []
     error_list = []
 
+    board_map = get_boards_with_owned_cards()
+
     per_project_list, per_project_error_list = get_next_action_per_project()
     error_list += per_project_error_list
 
     for project_card, next_action_card in per_project_list:
-        my_message_list = sync_card(project_card['name'], next_action_card)
-        message_list += my_message_list
+        board_id = next_action_card['idBoard']
+        if board_id not in board_map:
+            board_map[board_id] = Board(board_id, project_card['name'])
+
+        board_map[board_id].nextActionList.append(next_action_card)
+
+    for board in board_map.itervalues():
+        message_list += sync_board(board)
 
     return message_list, error_list
 
