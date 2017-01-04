@@ -72,59 +72,54 @@ def trello_delete_card(card_id):
 
 
 def sync_board(board):
-    name_list = []
-    for c in board.nextActionList:
-        name_list.append(c['name'])
-
-    print_list("sync_board called for " + board.name, name_list)
-    return []
-
     message_list = []
 
     # Figure out what cards already exist and so need no action
     exclude_list = []
 
-    for next_action_card in next_action_card_list:
+    for next_action_card in board.nextActionList:
         conn = sqlite3.connect(db_file)
         c = conn.cursor()
 
         c.execute('SELECT id '
                   'FROM next_action WHERE project_board_id = ? '
                   'AND project_next_action_id = ?',
-                  (board_id, next_action_card['id']))
+                  (board.id, next_action_card['id']))
         next_action = c.fetchone()
 
         if next_action is not None:
             exclude_list.append(next_action_card['id'])
 
     # Delete everything else for this project board
-    delete_query = ('SELECT gtd_next_action_id FROM next_action'
+    delete_query = ('SELECT gtd_next_action_id FROM next_action '
                     'WHERE project_board_id = ? ')
+    parameter_list = [board.id]
     if len(exclude_list):
         placeholder_string = ','.join('?' * len(exclude_list))
         delete_query += ('AND project_next_action_id NOT IN ('
                          + placeholder_string + ')')
-    c.excecute(delete_query, exclude_list)
+        parameter_list += exclude_list
+
+    c.execute(delete_query, tuple(parameter_list))
     delete_list = c.fetchall()
 
     for delete_row in delete_list:
         trello_delete_card(delete_row[0])
         c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
                   (delete_row[0],))
-        message_list.append(board_name + ": Archived card " + delete_row[0])
+        message_list.append(board.name + ": Archived card " + delete_row[0])
 
     # Create any new cards
-    for next_action_card in next_action_card_list:
+    for next_action_card in board.nextActionList:
         if next_action_card['id'] not in exclude_list:
-            gtd_next_action_id = trello_create_card(board_name + " - "
+            gtd_next_action_id = trello_create_card(board.name + " - "
                                                     + next_action_card['name'],
                                                     next_action_card['url'])
             c.execute('INSERT INTO next_action (project_board_id, '
                       'project_next_action_id, gtd_next_action_id) '
                       'VALUES (?, ?, ?)',
-                      (board_id, next_action_card['id'],
-                       gtd_next_action_id))
-            message_list.append(board_name + ": Created card "
+                      (board.id, next_action_card['id'], gtd_next_action_id))
+            message_list.append(board.name + ": Created card "
                                 + gtd_next_action_id)
 
     return message_list
