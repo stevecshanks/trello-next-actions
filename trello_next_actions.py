@@ -77,10 +77,10 @@ def sync_board(board):
     # Figure out what cards already exist and so need no action
     exclude_list = []
 
-    for next_action_card in board.nextActionList:
-        conn = sqlite3.connect(db_file)
-        c = conn.cursor()
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
 
+    for next_action_card in board.nextActionList:
         c.execute('SELECT id '
                   'FROM next_action WHERE project_board_id = ? '
                   'AND project_next_action_id = ?',
@@ -308,6 +308,23 @@ def sync_next_actions():
 
     for board in board_map.itervalues():
         message_list += sync_board(board)
+
+    # There may be some "orphaned" cards for boards that have no more next
+    # actions /  owned cards
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+    c.execute('SELECT project_board_id, gtd_next_action_id '
+              'FROM next_action')
+    all_cards_list = c.fetchall()
+    for card in all_cards_list:
+        if card[0] not in board_map:
+            trello_delete_card(card[1])
+            c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
+                  (card[1],))
+            message_list.append("Archived orphaned card " + card[1])
+
+    conn.commit()
+    conn.close()
 
     return message_list, error_list
 
