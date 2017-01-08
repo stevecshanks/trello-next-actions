@@ -5,6 +5,7 @@ import ConfigParser
 import sys
 import getopt
 import sqlite3
+from board import Board
 from urlparse import urlparse
 
 application_key = ""
@@ -28,8 +29,12 @@ def setup_database():
               'project_board_id VARCHAR(255) NOT NULL, '
               'project_next_action_id VARCHAR(255) NOT NULL, '
               'gtd_next_action_id VARCHAR(255) NOT NULL)')
-    c.execute('CREATE UNIQUE INDEX IF NOT EXISTS project_board '
+    c.execute('CREATE INDEX IF NOT EXISTS project_board_id '
               'ON next_action (project_board_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS project_next_action_id '
+              'ON next_action (project_next_action_id)')
+    c.execute('CREATE INDEX IF NOT EXISTS gtd_next_action_id '
+              'ON next_action (gtd_next_action_id)')
 
     conn.commit()
     conn.close()
@@ -66,41 +71,56 @@ def trello_delete_card(card_id):
                                   data)
 
 
-def sync_card(project_name, next_action_card):
+def sync_board(board):
     message_list = []
 
-    # Do we have a next action for this project board?
-    has_next_action = False
+    # Figure out what cards already exist and so need no action
+    exclude_list = []
 
     conn = sqlite3.connect(db_file)
     c = conn.cursor()
 
-    c.execute('SELECT project_next_action_id, gtd_next_action_id '
-              'FROM next_action WHERE project_board_id = ?',
-              (next_action_card['idBoard'],))
-    next_action = c.fetchone()
+    for next_action_card in board.nextActionList:
+        c.execute('SELECT id '
+                  'FROM next_action WHERE project_board_id = ? '
+                  'AND project_next_action_id = ?',
+                  (board.id, next_action_card['id']))
+        next_action = c.fetchone()
 
-    if next_action is not None:
-        # Is it the same as our current next action?
-        if next_action_card['id'] == next_action[0]:
-            has_next_action = True
-        else:
-            trello_delete_card(next_action[1])
-            c.execute('DELETE FROM next_action WHERE project_board_id = ?',
-                      (next_action_card['idBoard'],))
-            message_list.append("Archived card " + next_action_card['id'])
+        if next_action is not None:
+            exclude_list.append(next_action_card['id'])
 
-    # If no next action, create one and add to DB
-    if has_next_action is False:
-        gtd_next_action_id = trello_create_card(project_name + " - "
-                                                + next_action_card['name'],
-                                                next_action_card['url'])
-        c.execute('INSERT INTO next_action (project_board_id, '
-                  'project_next_action_id, gtd_next_action_id) '
-                  'VALUES (?, ?, ?)',
-                  (next_action_card['idBoard'], next_action_card['id'],
-                   gtd_next_action_id))
-        message_list.append("Created card " + gtd_next_action_id)
+    # Delete everything else for this project board
+    to_delete_query = ('SELECT gtd_next_action_id FROM next_action '
+                       'WHERE project_board_id = ? ')
+    parameter_list = [board.id]
+    if len(exclude_list):
+        placeholder_string = ','.join('?' * len(exclude_list))
+        to_delete_query += ('AND project_next_action_id NOT IN ('
+                            + placeholder_string + ')')
+        parameter_list += exclude_list
+
+    c.execute(to_delete_query, tuple(parameter_list))
+    to_delete_list = c.fetchall()
+
+    for to_delete_row in to_delete_list:
+        trello_delete_card(to_delete_row[0])
+        c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
+                  (to_delete_row[0],))
+        message_list.append(board.name + ": Archived card " + to_delete_row[0])
+
+    # Create any new cards
+    for next_action_card in board.nextActionList:
+        if next_action_card['id'] not in exclude_list:
+            gtd_next_action_id = trello_create_card(board.name + " - "
+                                                    + next_action_card['name'],
+                                                    next_action_card['url'])
+            c.execute('INSERT INTO next_action (project_board_id, '
+                      'project_next_action_id, gtd_next_action_id) '
+                      'VALUES (?, ?, ?)',
+                      (board.id, next_action_card['id'], gtd_next_action_id))
+            message_list.append(board.name + ": Created card "
+                                + gtd_next_action_id)
 
     conn.commit()
     conn.close()
@@ -167,9 +187,9 @@ def trello_handle_response(url, response):
 
 def get_list_id(board_id, list_name):
     lists_on_board = trello_get_request('https://api.trello.com/1/boards/'
-                                        + board_id + '/lists?cards=none&key='
-                                        + application_key + '&token='
-                                        + auth_token)
+                                        + board_id + '/lists?cards=none'
+                                        + '&key=' + application_key
+                                        + '&token=' + auth_token)
 
     # Find the named list
     list_id = None
@@ -188,9 +208,9 @@ def get_cards_in_list(board_id, list_name):
 
     # List the cards on that list
     cards_in_list = trello_get_request('https://api.trello.com/1/lists/'
-                                       + list_id + '/cards?key='
-                                       + application_key + '&token='
-                                       + auth_token)
+                                       + list_id + '/cards'
+                                       + '?key=' + application_key
+                                       + '&token=' + auth_token)
 
     return cards_in_list
 
@@ -250,21 +270,61 @@ def get_next_action_list():
     return next_action_list, error_list
 
 
+def get_boards_with_owned_cards():
+    board_map = {}
+
+    card_list = trello_get_request('https://api.trello.com/1/members/me/cards/'
+                                   + '?key=' + application_key
+                                   + '&token=' + auth_token)
+    for card in card_list:
+        board_id = card['idBoard']
+        if board_id not in board_map:
+            board = trello_get_request('https://api.trello.com/1/boards/'
+                                       + card['idBoard']
+                                       + '?key=' + application_key
+                                       + '&token=' + auth_token)
+            board_map[board_id] = Board(board_id, board['name'])
+
+        board_map[board_id].nextActionList.append(card)
+
+    return board_map
+
+
 def sync_next_actions():
     message_list = []
     error_list = []
 
+    board_map = get_boards_with_owned_cards()
+
     per_project_list, per_project_error_list = get_next_action_per_project()
     error_list += per_project_error_list
 
-    try:
-        setup_database()
-    except Exception as e:
-        print_error_and_exit("Error setting up DB: " + str(e))
-
     for project_card, next_action_card in per_project_list:
-        my_message_list = sync_card(project_card['name'], next_action_card)
-        message_list += my_message_list
+        board_id = next_action_card['idBoard']
+        if board_id not in board_map:
+            board_map[board_id] = Board(board_id, project_card['name'])
+
+        board_map[board_id].nextActionList.append(next_action_card)
+
+    for board in board_map.itervalues():
+        message_list += sync_board(board)
+
+    # There may be some "orphaned" cards for boards that have no more next
+    # actions /  owned cards
+    conn = sqlite3.connect(db_file)
+    c = conn.cursor()
+    c.execute('SELECT project_board_id, gtd_next_action_id '
+              'FROM next_action')
+    all_cards_list = c.fetchall()
+    for card in all_cards_list:
+        if card[0] not in board_map:
+            trello_delete_card(card[1])
+            c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
+                  (card[1],))
+            message_list.append("Archived orphaned card " + card[1])
+
+    conn.commit()
+    conn.close()
 
     return message_list, error_list
 
@@ -312,12 +372,18 @@ def main():
     except:
         print_error_and_exit("Failed to load config '" + config_name + "'")
 
+    try:
+        setup_database()
+    except Exception as e:
+        print_error_and_exit("Error setting up DB: " + str(e))
+
     if action == 'list':
         next_action_list, error_list = get_next_action_list()
 
         print_list('Next Actions', next_action_list)
         if len(error_list) > 0:
             print_list('Errors', error_list)
+
     elif action == 'sync':
         message_list, error_list = sync_next_actions()
 
@@ -325,9 +391,11 @@ def main():
             print_list('Messages', message_list)
         if len(error_list) > 0:
             print_list('Errors', error_list)
+
     elif action == 'reset':
         message_list = reset()
         print_list("Reset", message_list)
+
     else:
         print_error_and_exit("Unrecognised action '" + action + "'")
 
