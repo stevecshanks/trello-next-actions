@@ -320,7 +320,7 @@ def sync_next_actions():
         if card[0] not in board_map:
             trello_delete_card(card[1])
             c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
-                  (card[1],))
+                      (card[1],))
             message_list.append("Archived orphaned card " + card[1])
 
     conn.commit()
