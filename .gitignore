@@ -87,3 +87,7 @@ ENV/
 
 # Rope project settings
 .ropeproject
+
+# Trello Next Actions stuff:
+.trellonextactions
+trellonextactions.db
