@@ -16,7 +16,5 @@ class Board:
         return [List(j) for j in json]
 
     def getListByName(self, name):
-        for l in self.getLists():
-            if l.name == name:
-                return l
-        return None
+        matches = [l for l in self.getLists() if l.name == name]
+        return matches[0] if len(matches) else None
