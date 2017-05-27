@@ -152,7 +152,7 @@ def trello_get_request(url):
     try:
         response = requests.get(url)
         return trello_handle_response(url, response)
-    except:
+    except Exception:
         print_error_and_exit("Failed API request to " + url)
 
 
@@ -160,7 +160,7 @@ def trello_post_request(url, data):
     try:
         response = requests.post(url, data)
         return trello_handle_response(url, response)
-    except:
+    except Exception:
         print_error_and_exit("Failed API request to " + url)
 
 
@@ -168,7 +168,7 @@ def trello_put_request(url, data):
     try:
         response = requests.put(url, data)
         return trello_handle_response(url, response)
-    except:
+    except Exception:
         print_error_and_exit("Failed API request to " + url)
 
 
@@ -179,7 +179,7 @@ def trello_handle_response(url, response):
 
     try:
         json = response.json()
-    except:
+    except Exception:
         print_error_and_exit("Could not parse JSON response from " + url)
 
     return json
@@ -369,7 +369,7 @@ def main():
 
     try:
         load_config(config_name)
-    except:
+    except Exception:
         print_error_and_exit("Failed to load config '" + config_name + "'")
 
     try:
