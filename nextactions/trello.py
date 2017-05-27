@@ -23,13 +23,13 @@ class Trello:
 
     def _getResponseJSONOrRaiseError(self, response):
         if response.status_code == 400:
-            raise BadRequestError
+            raise BadRequestError("Bad request")
         elif response.status_code == 401:
-            raise UnauthorisedError()
+            raise UnauthorisedError("Unauthorised")
         elif response.status_code == 404:
-            raise NotFoundError()
+            raise NotFoundError("Not found")
         elif response.status_code != 200:
-            raise ServerError()
+            raise ServerError("Server error")
         else:
             return response.json()
 

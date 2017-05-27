@@ -41,9 +41,10 @@ def setup_database():
     conn.close()
 
 
-def trello_create_card(name, description):
+def trello_create_card(trello, name, description):
+    board = trello.getBoardById(gtd_board_id)
     try:
-        list_id = get_list_id(gtd_board_id, 'Next Actions')
+        list_id = get_list_id(board, gtd_board_id, 'Next Actions')
     except ValueError:
         print_error_and_exit("Could not find ID for Next Actions list")
 
@@ -72,7 +73,7 @@ def trello_delete_card(card_id):
                                   data)
 
 
-def sync_board(board):
+def sync_board(trello, board):
     message_list = []
 
     # Figure out what cards already exist and so need no action
@@ -113,7 +114,8 @@ def sync_board(board):
     # Create any new cards
     for next_action_card in board.nextActionList:
         if next_action_card['id'] not in exclude_list:
-            gtd_next_action_id = trello_create_card(board.name + " - "
+            gtd_next_action_id = trello_create_card(trello,
+                                                    board.name + " - "
                                                     + next_action_card['name'],
                                                     next_action_card['url'])
             c.execute('INSERT INTO next_action (project_board_id, '
@@ -186,26 +188,16 @@ def trello_handle_response(url, response):
     return json
 
 
-def get_list_id(board_id, list_name):
-    lists_on_board = trello_get_request('https://api.trello.com/1/boards/'
-                                        + board_id + '/lists?cards=none'
-                                        + '&key=' + application_key
-                                        + '&token=' + auth_token)
-
-    # Find the named list
-    list_id = None
-    for l in lists_on_board:
-        if l['name'] == list_name:
-            list_id = l['id']
-            break
-
-    if list_id is None:
+def get_list_id(board, board_id, list_name):
+    list_ = board.getListByName(list_name)
+    if list_ is None:
         raise ValueError("No list with name '" + list_name + "' found")
-    return list_id
+    return list_.id
 
 
-def get_cards_in_list(board_id, list_name):
-    list_id = get_list_id(board_id, list_name)
+def get_cards_in_list(trello, board_id, list_name):
+    board = trello.getBoardById(board_id)
+    list_id = get_list_id(board, board_id, list_name)
 
     # List the cards on that list
     cards_in_list = trello_get_request('https://api.trello.com/1/lists/'
@@ -216,12 +208,12 @@ def get_cards_in_list(board_id, list_name):
     return cards_in_list
 
 
-def get_next_action_per_project():
+def get_next_action_per_project(trello):
     next_action_list = []
     error_list = []
 
     try:
-        project_card_list = get_cards_in_list(gtd_board_id, 'Projects')
+        project_card_list = get_cards_in_list(trello, gtd_board_id, 'Projects')
     except ValueError as e:
         print_error_and_exit(str(e))
 
@@ -235,7 +227,7 @@ def get_next_action_per_project():
             # URLs all seem to be of the form /x/xyz123/nice-description
             path_bits = url_bits.path.split('/')
             short_id = path_bits[2]
-            todo_card_list = get_cards_in_list(short_id, 'Todo')
+            todo_card_list = get_cards_in_list(trello, short_id, 'Todo')
 
             if len(todo_card_list) > 0:
                 next_action_card = todo_card_list[0]
@@ -269,7 +261,7 @@ def sync_next_actions(trello):
 
     board_map = get_boards_with_owned_cards(trello)
 
-    per_project_list, per_project_error_list = get_next_action_per_project()
+    per_project_list, per_project_error_list = get_next_action_per_project(trello)
     error_list += per_project_error_list
 
     for project_card, next_action_card in per_project_list:
@@ -282,7 +274,7 @@ def sync_next_actions(trello):
         board_map[board_id].nextActionList.append(next_action_card)
 
     for board in board_map:
-        message_list += sync_board(board_map[board])
+        message_list += sync_board(trello, board_map[board])
 
     # There may be some "orphaned" cards for boards that have no more next
     # actions /  owned cards
