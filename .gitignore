@@ -89,5 +89,5 @@ ENV/
 .ropeproject
 
 # Trello Next Actions stuff:
-.trellonextactions
+.trellonextactions.json
 trellonextactions.db
