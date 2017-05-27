@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import requests
 import json
 import ConfigParser
@@ -343,11 +343,11 @@ def load_config(config_name):
 
 
 def print_list(name, card_list):
-    print name + ":"
-    print
+    print(name + ":")
+    print()
     for c in card_list:
-        print " [ ] " + c
-    print
+        print(" [ ] " + c)
+    print()
 
 
 def main():
