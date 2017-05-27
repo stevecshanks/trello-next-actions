@@ -5,7 +5,7 @@ import sys
 import getopt
 import sqlite3
 from board import Board
-from configparser import ConfigParser
+from config import Config
 from urllib.parse import urlparse
 
 application_key = ""
@@ -329,17 +329,17 @@ def sync_next_actions():
     return message_list, error_list
 
 
-def load_config(config_name):
+def load_config(config_file):
     global application_key
     global auth_token
     global gtd_board_id
 
-    config = ConfigParser()
-    config.read(".trellonextactions")
+    config = Config()
+    config.loadFromFile(config_file)
 
-    gtd_board_id = config.get(config_name, 'board_id')
-    application_key = config.get(config_name, 'application_key')
-    auth_token = config.get(config_name, 'auth_token')
+    gtd_board_id = config.get('board_id')
+    application_key = config.get('application_key')
+    auth_token = config.get('auth_token')
 
 
 def print_list(name, card_list):
@@ -351,14 +351,14 @@ def print_list(name, card_list):
 
 
 def main():
-    config_name = 'default'
+    config_file = '.trellonextactions.json'
     action = 'list'
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", ["config="])
         for opt, arg in opts:
             if opt == '--config':
-                config_name = arg
+                config_file = arg
     except getopt.GetoptError as e:
         print_error_and_exit(str(e))
 
@@ -368,9 +368,9 @@ def main():
         action = args[0]
 
     try:
-        load_config(config_name)
+        load_config(config_file)
     except Exception:
-        print_error_and_exit("Failed to load config '" + config_name + "'")
+        print_error_and_exit("Failed to load config '" + config_file + "'")
 
     try:
         setup_database()
