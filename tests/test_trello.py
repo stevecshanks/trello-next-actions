@@ -10,26 +10,17 @@ class TestTrello(unittest.TestCase):
     def setUp(self):
         self.trello = Trello(None)
 
-    def testGetRaisesUnauthorisedOn401(self):
-        with self.assertRaises(nextactions.trello.UnauthorisedError):
-            self._testGetWithStatusCode(401)
+    def testBadResponseCodeRaisesError(self):
+        codes = [400, 401, 404, 500]
+        for code in codes:
+            with self.subTest(code=code):
+                with self.assertRaises(nextactions.trello.APIError):
+                    self._testGetWithStatusCode(code)
 
     def _testGetWithStatusCode(self, status_code):
         fake_response = FakeResponse(status_code)
         self.trello._makeGetRequest = MagicMock(return_value=fake_response)
         return self.trello.get("fake url")
-
-    def testGetRaisesBadRequestOn400(self):
-        with self.assertRaises(nextactions.trello.BadRequestError):
-            self._testGetWithStatusCode(400)
-
-    def testGetRaisesNotFoundOn404(self):
-        with self.assertRaises(nextactions.trello.NotFoundError):
-            self._testGetWithStatusCode(404)
-
-    def testGetRaisesErrorOn500(self):
-        with self.assertRaises(nextactions.trello.ServerError):
-            self._testGetWithStatusCode(500)
 
     def testGetWith200(self):
         json = self._testGetWithStatusCode(200)

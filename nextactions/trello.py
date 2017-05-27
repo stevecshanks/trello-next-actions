@@ -22,14 +22,10 @@ class Trello:
         }
 
     def _getResponseJSONOrRaiseError(self, response):
-        if response.status_code == 400:
-            raise BadRequestError("Bad request")
-        elif response.status_code == 401:
-            raise UnauthorisedError("Unauthorised")
-        elif response.status_code == 404:
-            raise NotFoundError("Not found")
-        elif response.status_code != 200:
-            raise ServerError("Server error")
+        if response.status_code != 200:
+            raise APIError(
+                "Request failed with status code " + str(response.status_code)
+            )
         else:
             return response.json()
 
@@ -42,17 +38,5 @@ class Trello:
         return [Card(j) for j in json]
 
 
-class BadRequestError(ValueError):
-    pass
-
-
-class UnauthorisedError(ValueError):
-    pass
-
-
-class NotFoundError(ValueError):
-    pass
-
-
-class ServerError(ValueError):
+class APIError(RuntimeError):
     pass
