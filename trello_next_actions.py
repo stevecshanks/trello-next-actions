@@ -276,6 +276,7 @@ def sync_next_actions(trello):
         board_id = next_action_card['idBoard']
         if board_id not in board_map:
             board_map[board_id] = Board(
+                trello,
                 {'id': board_id, 'name': project_card['name']})
 
         board_map[board_id].nextActionList.append(next_action_card)

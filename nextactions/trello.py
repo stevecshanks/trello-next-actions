@@ -8,7 +8,7 @@ class Trello:
     def __init__(self, config):
         self._config = config
 
-    def _get(self, url):
+    def get(self, url):
         response = self._makeGetRequest(url)
         return self._getResponseJSONOrRaiseError(response)
 
@@ -22,7 +22,9 @@ class Trello:
         }
 
     def _getResponseJSONOrRaiseError(self, response):
-        if response.status_code == 401:
+        if response.status_code == 400:
+            raise BadRequestError
+        elif response.status_code == 401:
             raise UnauthorisedError()
         elif response.status_code == 404:
             raise NotFoundError()
@@ -32,12 +34,16 @@ class Trello:
             return response.json()
 
     def getBoardById(self, id):
-        json = self._get('https://api.trello.com/1/boards/' + id)
-        return Board(json)
+        json = self.get('https://api.trello.com/1/boards/' + id)
+        return Board(self, json)
 
     def getOwnedCards(self):
-        json = self._get('https://api.trello.com/1/members/me/cards/')
+        json = self.get('https://api.trello.com/1/members/me/cards/')
         return [Card(j) for j in json]
+
+
+class BadRequestError(ValueError):
+    pass
 
 
 class UnauthorisedError(ValueError):

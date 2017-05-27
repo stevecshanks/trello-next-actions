@@ -17,7 +17,11 @@ class TestTrello(unittest.TestCase):
     def _testGetWithStatusCode(self, status_code):
         fake_response = FakeResponse(status_code)
         self.trello._makeGetRequest = MagicMock(return_value=fake_response)
-        return self.trello._get("fake url")
+        return self.trello.get("fake url")
+
+    def testGetRaisesBadRequestOn400(self):
+        with self.assertRaises(nextactions.trello.BadRequestError):
+            self._testGetWithStatusCode(400)
 
     def testGetRaisesNotFoundOn404(self):
         with self.assertRaises(nextactions.trello.NotFoundError):
@@ -38,7 +42,7 @@ class TestTrello(unittest.TestCase):
         self.assertEqual(board.name, "Test Name")
 
     def _mockGetResponse(self, json):
-        self.trello._get = MagicMock(return_value=json)
+        self.trello.get = MagicMock(return_value=json)
 
     def testGetZeroOwnedCards(self):
         self._mockGetResponse([])
