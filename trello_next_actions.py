@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import requests
 import json
-import ConfigParser
 import sys
 import getopt
 import sqlite3
 from board import Board
-from urlparse import urlparse
+from configparser import ConfigParser
+from urllib.parse import urlparse
 
 application_key = ""
 auth_token = ""
@@ -306,8 +306,8 @@ def sync_next_actions():
 
         board_map[board_id].nextActionList.append(next_action_card)
 
-    for board in board_map.itervalues():
-        message_list += sync_board(board)
+    for board in board_map:
+        message_list += sync_board(board_map[board])
 
     # There may be some "orphaned" cards for boards that have no more next
     # actions /  owned cards
@@ -334,7 +334,7 @@ def load_config(config_name):
     global auth_token
     global gtd_board_id
 
-    config = ConfigParser.ConfigParser()
+    config = ConfigParser()
     config.read(".trellonextactions")
 
     gtd_board_id = config.get(config_name, 'board_id')
@@ -398,6 +398,7 @@ def main():
 
     else:
         print_error_and_exit("Unrecognised action '" + action + "'")
+
 
 if __name__ == '__main__':
     sys.exit(main())
