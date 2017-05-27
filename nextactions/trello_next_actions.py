@@ -261,7 +261,7 @@ def get_boards_with_owned_cards():
                                        + card['idBoard']
                                        + '?key=' + application_key
                                        + '&token=' + auth_token)
-            board_map[board_id] = Board(board_id, board['name'])
+            board_map[board_id] = Board(board)
 
         board_map[board_id].nextActionList.append(card)
 
@@ -280,7 +280,7 @@ def sync_next_actions():
     for project_card, next_action_card in per_project_list:
         board_id = next_action_card['idBoard']
         if board_id not in board_map:
-            board_map[board_id] = Board(board_id, project_card['name'])
+            board_map[board_id] = Board({'id': board_id, 'name': project_card['name']})
 
         board_map[board_id].nextActionList.append(next_action_card)
 

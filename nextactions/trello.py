@@ -1,4 +1,5 @@
 from nextactions.board import Board
+from nextactions.card import Card
 
 
 class Trello:
@@ -25,7 +26,11 @@ class Trello:
 
     def getBoardById(self, id):
         json = self._get('https://api.trello.com/1/boards/' + id)
-        return Board(json['id'], json['name'])
+        return Board(json)
+
+    def getOwnedCards(self):
+        json = self._get('https://api.trello.com/1/members/me/cards/')
+        return [Card(j) for j in json]
 
 
 class UnauthorisedError(ValueError):

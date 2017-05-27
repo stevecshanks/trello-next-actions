@@ -31,11 +31,26 @@ class TestTrello(unittest.TestCase):
         self.assertEqual(json, {})
 
     def testGetBoard(self):
-        json = {'id': "123", 'name': "Test Name"}
-        self.trello._get = MagicMock(return_value=json)
+        self._mockGetResponse({'id': "123", 'name': "Test Name"})
         board = self.trello.getBoardById("123")
         self.assertEqual(board.id, "123")
         self.assertEqual(board.name, "Test Name")
+
+    def _mockGetResponse(self, json):
+        self.trello._get = MagicMock(return_value=json)
+
+    def testGetZeroOwnedCards(self):
+        self._mockGetResponse([])
+        owned_cards = self.trello.getOwnedCards()
+        self.assertEqual(owned_cards, [])
+
+    def testGetOneOwnedCard(self):
+        self._mockGetResponse([{'id': "123", 'name': "Test Name"}])
+        owned_cards = self.trello.getOwnedCards()
+        self.assertEqual(len(owned_cards), 1)
+        self.assertEqual(owned_cards[0].id, "123")
+        self.assertEqual(owned_cards[0].name, "Test Name")
+
 
 
 class FakeResponse:
