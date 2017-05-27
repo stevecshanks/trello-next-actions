@@ -4,8 +4,9 @@ import json
 import sys
 import getopt
 import sqlite3
-from board import Board
-from config import Config
+from nextactions.board import Board
+from nextactions.config import Config
+from nextactions.trello import Trello
 from urllib.parse import urlparse
 
 application_key = ""
@@ -248,31 +249,25 @@ def get_next_action_per_project():
     return next_action_list, error_list
 
 
-def get_boards_with_owned_cards():
+def get_boards_with_owned_cards(trello):
     board_map = {}
+    card_list = trello.getOwnedCards()
 
-    card_list = trello_get_request('https://api.trello.com/1/members/me/cards/'
-                                   + '?key=' + application_key
-                                   + '&token=' + auth_token)
     for card in card_list:
-        board_id = card['idBoard']
-        if board_id not in board_map:
-            board = trello_get_request('https://api.trello.com/1/boards/'
-                                       + card['idBoard']
-                                       + '?key=' + application_key
-                                       + '&token=' + auth_token)
-            board_map[board_id] = Board(board)
+        if card.board_id not in board_map:
+            board_map[card.board_id] = trello.getBoardById(card.board_id)
 
-        board_map[board_id].nextActionList.append(card)
+        card_dict = {'id': card.id, 'name': card.name, 'url': "TODO"}
+        board_map[card.board_id].nextActionList.append(card_dict)
 
     return board_map
 
 
-def sync_next_actions():
+def sync_next_actions(trello):
     message_list = []
     error_list = []
 
-    board_map = get_boards_with_owned_cards()
+    board_map = get_boards_with_owned_cards(trello)
 
     per_project_list, per_project_error_list = get_next_action_per_project()
     error_list += per_project_error_list
@@ -280,7 +275,8 @@ def sync_next_actions():
     for project_card, next_action_card in per_project_list:
         board_id = next_action_card['idBoard']
         if board_id not in board_map:
-            board_map[board_id] = Board({'id': board_id, 'name': project_card['name']})
+            board_map[board_id] = Board(
+                {'id': board_id, 'name': project_card['name']})
 
         board_map[board_id].nextActionList.append(next_action_card)
 
@@ -319,6 +315,8 @@ def load_config(config_file):
     application_key = config.get('application_key')
     auth_token = config.get('auth_token')
 
+    return config
+
 
 def print_list(name, card_list):
     print(name + ":")
@@ -346,7 +344,7 @@ def main():
         action = args[0]
 
     try:
-        load_config(config_file)
+        config = load_config(config_file)
     except Exception:
         print_error_and_exit("Failed to load config '" + config_file + "'")
 
@@ -355,8 +353,10 @@ def main():
     except Exception as e:
         print_error_and_exit("Error setting up DB: " + str(e))
 
+    trello = Trello(config)
+
     if action == 'sync':
-        message_list, error_list = sync_next_actions()
+        message_list, error_list = sync_next_actions(trello)
 
         if len(message_list) > 0:
             print_list('Messages', message_list)

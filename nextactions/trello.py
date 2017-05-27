@@ -1,5 +1,6 @@
 from nextactions.board import Board
 from nextactions.card import Card
+import requests
 
 
 class Trello:
@@ -12,7 +13,13 @@ class Trello:
         return self._getResponseJSONOrRaiseError(response)
 
     def _makeGetRequest(self, url):
-        pass
+        return requests.get(url, self._getAuth())
+
+    def _getAuth(self):
+        return {
+            'key': self._config.get('application_key'),
+            'token': self._config.get('auth_token')
+        }
 
     def _getResponseJSONOrRaiseError(self, response):
         if response.status_code == 401:

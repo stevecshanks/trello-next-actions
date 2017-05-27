@@ -1,5 +1,6 @@
 import unittest
 import nextactions
+from nextactions.config import Config
 from nextactions.trello import Trello
 from unittest.mock import MagicMock
 
@@ -45,12 +46,24 @@ class TestTrello(unittest.TestCase):
         self.assertEqual(owned_cards, [])
 
     def testGetOneOwnedCard(self):
-        self._mockGetResponse([{'id': "123", 'name': "Test Name"}])
+        self._mockGetResponse([{
+            'id': "123",
+            'name': "Test Name",
+            'idBoard': "456"
+        }])
         owned_cards = self.trello.getOwnedCards()
         self.assertEqual(len(owned_cards), 1)
         self.assertEqual(owned_cards[0].id, "123")
         self.assertEqual(owned_cards[0].name, "Test Name")
 
+    def testGetAuth(self):
+        config = Config()
+        config.set('application_key', "dummy key")
+        config.set('auth_token', "dummy token")
+        trello = Trello(config)
+        auth = trello._getAuth()
+        self.assertEqual(auth['key'], "dummy key")
+        self.assertEqual(auth['token'], "dummy token")
 
 
 class FakeResponse:
