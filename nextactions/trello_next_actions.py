@@ -248,28 +248,6 @@ def get_next_action_per_project():
     return next_action_list, error_list
 
 
-def get_next_action_list():
-    next_action_list = []
-    error_list = []
-
-    per_project_list, per_project_error_list = get_next_action_per_project()
-    error_list += per_project_error_list
-
-    for project_card, next_action_card in per_project_list:
-        next_action_text = project_card['name'] + ' - '
-        next_action_text += next_action_card['name']
-        next_action_list.append(next_action_text)
-
-    # Now return all the non-project Next Actions so that there's a
-    # consolidated list
-    next_action_card_list = get_cards_in_list(gtd_board_id, 'Next Actions')
-
-    for next_action_card in next_action_card_list:
-        next_action_list.append(next_action_card['name'])
-
-    return next_action_list, error_list
-
-
 def get_boards_with_owned_cards():
     board_map = {}
 
@@ -352,7 +330,7 @@ def print_list(name, card_list):
 
 def main():
     config_file = '.trellonextactions.json'
-    action = 'list'
+    action = ""
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "", ["config="])
@@ -377,14 +355,7 @@ def main():
     except Exception as e:
         print_error_and_exit("Error setting up DB: " + str(e))
 
-    if action == 'list':
-        next_action_list, error_list = get_next_action_list()
-
-        print_list('Next Actions', next_action_list)
-        if len(error_list) > 0:
-            print_list('Errors', error_list)
-
-    elif action == 'sync':
+    if action == 'sync':
         message_list, error_list = sync_next_actions()
 
         if len(message_list) > 0:
