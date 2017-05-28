@@ -9,11 +9,18 @@ class Trello:
         self._config = config
 
     def get(self, url, data):
-        response = self._makeGetRequest(url, self._addAuthToData(data))
-        return self._getResponseJSONOrRaiseError(response)
+        return self._makeRequest('get', url, data)
 
     def post(self, url, data):
-        response = self._makePostRequest(url, self._addAuthToData(data))
+        return self._makeRequest('post', url, data)
+
+    def put(self, url, data):
+        return self._makeRequest('put', url, data)
+
+    def _makeRequest(self, request_type, url, data):
+        method_name = "_make" + request_type.capitalize() + "Request"
+        method = getattr(self, method_name)
+        response = method(url, self._addAuthToData(data))
         return self._getResponseJSONOrRaiseError(response)
 
     def _addAuthToData(self, data):
@@ -27,14 +34,13 @@ class Trello:
         }
 
     def _makeGetRequest(self, url, data):
-        if self._config.get('debug'):
-            print("GET " + url)
         return requests.get(url, data)
 
     def _makePostRequest(self, url, data):
-        if self._config.get('debug'):
-            print("POST " + url)
         return requests.post(url, data)
+
+    def _makePutRequest(self, url, data):
+        return requests.put(url, data)
 
     def _getResponseJSONOrRaiseError(self, response):
         if response.status_code != 200:
@@ -51,6 +57,12 @@ class Trello:
     def getOwnedCards(self):
         json = self.get('https://api.trello.com/1/members/me/cards', {})
         return [Card(j) for j in json]
+
+    def archiveCard(self, card_id):
+        self.put(
+            'https://api.trello.com/1/cards/' + card_id + '/closed',
+            {'value': "true"}
+        )
 
 
 class APIError(RuntimeError):

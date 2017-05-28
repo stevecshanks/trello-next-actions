@@ -48,19 +48,6 @@ def trello_create_card(trello, name, description):
     return list_.createCard(name, description)
 
 
-def trello_delete_card(card_id):
-    # Note: Only archive cards, just in case they've been edited by the user
-    data = {
-        'value': 'true',
-        'key': application_key,
-        'token': auth_token
-    }
-
-    response = trello_put_request('https://api.trello.com/1/cards/'
-                                  + card_id + "/closed",
-                                  data)
-
-
 def sync_board(trello, board):
     message_list = []
 
@@ -94,7 +81,7 @@ def sync_board(trello, board):
     to_delete_list = c.fetchall()
 
     for to_delete_row in to_delete_list:
-        trello_delete_card(to_delete_row[0])
+        trello.archiveCard(to_delete_row[0])
         c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
                   (to_delete_row[0],))
         message_list.append(board.name + ": Archived card " + to_delete_row[0])
@@ -119,7 +106,7 @@ def sync_board(trello, board):
     return message_list
 
 
-def reset():
+def reset(trello):
     message_list = []
 
     conn = sqlite3.connect(db_file)
@@ -128,7 +115,7 @@ def reset():
     c.execute('SELECT gtd_next_action_id FROM next_action')
     next_action_list = c.fetchall()
     for next_action in next_action_list:
-        trello_delete_card(next_action[0])
+        trello.archiveCard(next_action[0])
         c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
                   (next_action[0],))
         message_list.append("Archived card " + next_action[0])
@@ -137,27 +124,6 @@ def reset():
     conn.close()
 
     return message_list
-
-
-def trello_put_request(url, data):
-    try:
-        response = requests.put(url, data)
-        return trello_handle_response(url, response)
-    except Exception:
-        print_error_and_exit("Failed API request to " + url)
-
-
-def trello_handle_response(url, response):
-    if response.status_code != 200:
-        print_error_and_exit("HTTP " + str(response.status_code)
-                             + " response from " + url)
-
-    try:
-        json = response.json()
-    except Exception:
-        print_error_and_exit("Could not parse JSON response from " + url)
-
-    return json
 
 
 def get_list_id(board, board_id, list_name):
@@ -244,7 +210,7 @@ def sync_next_actions(trello):
     all_cards_list = c.fetchall()
     for card in all_cards_list:
         if card[0] not in board_map:
-            trello_delete_card(card[1])
+            trello.archiveCard(card[1])
             c.execute('DELETE FROM next_action WHERE gtd_next_action_id = ?',
                       (card[1],))
             message_list.append("Archived orphaned card " + card[1])
@@ -316,7 +282,7 @@ def main():
             print_list('Errors', error_list)
 
     elif action == 'reset':
-        message_list = reset()
+        message_list = reset(trello)
         print_list("Reset", message_list)
 
     else:

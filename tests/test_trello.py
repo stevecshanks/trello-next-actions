@@ -25,6 +25,12 @@ class TestTrello(unittest.TestCase):
     def testPostRequestErrors(self):
         self._testBadResponseRaisesError('post')
 
+    def testPutRequestOk(self):
+        self._testRequestOk('put')
+
+    def testPutRequestErrors(self):
+        self._testBadResponseRaisesError('put')
+
     def _mockRequestToReturnCode(self, request_type, status_code):
         self._mockMakeRequestToReturnCode(request_type, status_code)
         return self._getMethodForRequest(request_type)
@@ -61,6 +67,9 @@ class TestTrello(unittest.TestCase):
 
     def testPostRequestMadeWithDataAndAuth(self):
         self._testRequestMadeWithDataAndAuth('post')
+
+    def testPutRequestMadeWithDataAndAuth(self):
+        self._testRequestMadeWithDataAndAuth('put')
 
     def _testRequestMadeWithDataAndAuth(self, request_type):
         data = {'test': "123"}
@@ -106,6 +115,15 @@ class TestTrello(unittest.TestCase):
         self.assertEqual(len(owned_cards), 1)
         self.assertEqual(owned_cards[0].id, "123")
         self.assertEqual(owned_cards[0].name, "Test Name")
+
+    def testArchiveCard(self):
+        mock = MagicMock()
+        self.trello.put = mock
+        self.trello.archiveCard("123")
+        mock.assert_called_once_with(
+            'https://api.trello.com/1/cards/123/closed',
+            {'value': "true"}
+        )
 
 
 class FakeResponse:
