@@ -8,11 +8,11 @@ class Trello:
     def __init__(self, config):
         self._config = config
 
-    def get(self, url):
-        response = self._makeGetRequest(url)
+    def get(self, url, data):
+        response = self._makeGetRequest(url, data)
         return self._getResponseJSONOrRaiseError(response)
 
-    def _makeGetRequest(self, url):
+    def _makeGetRequest(self, url, data):
         return requests.get(url, self._getAuth())
 
     def _getAuth(self):

@@ -11,35 +11,43 @@ class TestTrello(unittest.TestCase):
         self.trello = Trello(None)
         self.bad_status_codes = [400, 401, 404, 500]
 
-    def testBadGetResponseRaisesError(self):
+    def _mockRequestToReturnCode(self, request_type, status_code):
+        method_name = "_make" + request_type.capitalize() + "Request"
+        fake_response = FakeResponse(status_code)
+        mock = MagicMock(return_value=fake_response)
+        setattr(self.trello, method_name, mock)
+
+        return getattr(self.trello, request_type)
+
+    def _testRequestOk(self, request_type):
+        json = self._testRequestWithStatusCode(request_type, 200)
+        self.assertEqual(json, {})
+
+    def _testRequestWithStatusCode(self, request_type, status_code):
+        method = self._mockRequestToReturnCode(request_type, status_code)
+        return method("fake url", {})
+
+    def _testBadResponseRaisesError(self, request_type):
         for code in self.bad_status_codes:
             with self.subTest(code=code):
                 with self.assertRaises(nextactions.trello.APIError):
-                    self._testGetWithStatusCode(code)
+                    self._testRequestWithStatusCode(request_type, code)
 
-    def _testGetWithStatusCode(self, status_code):
-        fake_response = FakeResponse(status_code)
-        self.trello._makeGetRequest = MagicMock(return_value=fake_response)
-        return self.trello.get("fake url")
+    def testGetRequestOk(self):
+        self._testRequestOk('get')
 
-    def testGetWith200(self):
-        json = self._testGetWithStatusCode(200)
-        self.assertEqual(json, {})
+    def testGetequestErrors(self):
+        self._testBadResponseRaisesError('get')
 
-    def testBadPostResponseRaisesError(self):
-        for code in self.bad_status_codes:
-            with self.subTest(code=code):
-                with self.assertRaises(nextactions.trello.APIError):
-                    self._testPostWithStatusCode(code)
+    def testPostRequestOk(self):
+        self._testRequestOk('post')
 
-    def _testPostWithStatusCode(self, status_code):
-        fake_response = FakeResponse(status_code)
-        self.trello._makePostRequest = MagicMock(return_value=fake_response)
-        return self.trello.post("fake url", {})
+    def testPostRequestErrors(self):
+        self._testBadResponseRaisesError('post')
 
-    def testPostWith200(self):
-        json = self._testPostWithStatusCode(200)
-        self.assertEqual(json, {})
+    @unittest.skip("Todo")
+    def testRequestMadeWithDataAndAuth(self):
+        pass
 
     def testGetBoard(self):
         self._mockGetResponse({'id': "123", 'name': "Test Name"})
