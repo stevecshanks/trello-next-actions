@@ -9,8 +9,6 @@ from nextactions.config import Config
 from nextactions.trello import Trello
 from urllib.parse import urlparse
 
-application_key = ""
-auth_token = ""
 gtd_board_id = ""
 
 db_file = 'trellonextactions.db'
@@ -126,13 +124,6 @@ def reset(trello):
     return message_list
 
 
-def get_list_id(board, board_id, list_name):
-    list_ = board.getListByName(list_name)
-    if list_ is None:
-        raise ValueError("No list with name '" + list_name + "' found")
-    return list_.id
-
-
 def get_next_action_per_project(trello):
     next_action_list = []
     error_list = []
@@ -222,16 +213,12 @@ def sync_next_actions(trello):
 
 
 def load_config(config_file):
-    global application_key
-    global auth_token
     global gtd_board_id
 
     config = Config()
     config.loadFromFile(config_file)
 
     gtd_board_id = config.get('board_id')
-    application_key = config.get('application_key')
-    auth_token = config.get('auth_token')
 
     return config
 

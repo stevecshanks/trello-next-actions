@@ -58,6 +58,8 @@ class Trello:
         json = self.get('https://api.trello.com/1/members/me/cards', {})
         return [Card(j) for j in json]
 
+    # Putting this in Trello rather than Card as we want to be able to archive
+    # lots of cards just by their ID, without loading them all first
     def archiveCard(self, card_id):
         self.put(
             'https://api.trello.com/1/cards/' + card_id + '/closed',
