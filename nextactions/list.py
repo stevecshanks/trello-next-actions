@@ -22,4 +22,4 @@ class List:
             'https://api.trello.com/1/lists/' + self.id + '/cards',
             {}
         )
-        return [Card(j) for j in json]
+        return [Card(self._trello, j) for j in json]

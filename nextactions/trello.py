@@ -46,7 +46,7 @@ class Trello:
 
     def getOwnedCards(self):
         json = self.get('https://api.trello.com/1/members/me/cards', {})
-        return [Card(j) for j in json]
+        return [Card(self, j) for j in json]
 
     # Putting this in Trello rather than Card as we want to be able to archive
     # lots of cards just by their ID, without loading them all first
