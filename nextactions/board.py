@@ -11,7 +11,8 @@ class Board:
 
     def getLists(self):
         json = self._trello.get(
-            'https://api.trello.com/1/boards/' + self.id + '/lists?cards=none'
+            'https://api.trello.com/1/boards/' + self.id + '/lists',
+            {'cards': "none"}
         )
         return [List(self._trello, j) for j in json]
 

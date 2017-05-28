@@ -41,11 +41,11 @@ class Trello:
             return response.json()
 
     def getBoardById(self, board_id):
-        json = self.get('https://api.trello.com/1/boards/' + board_id)
+        json = self.get('https://api.trello.com/1/boards/' + board_id, {})
         return Board(self, json)
 
     def getOwnedCards(self):
-        json = self.get('https://api.trello.com/1/members/me/cards/')
+        json = self.get('https://api.trello.com/1/members/me/cards', {})
         return [Card(j) for j in json]
 
 

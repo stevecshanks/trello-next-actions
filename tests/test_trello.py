@@ -71,18 +71,28 @@ class TestTrello(unittest.TestCase):
         mock.assert_called_once_with("fake url", expected)
 
     def testGetBoard(self):
-        self._mockGetResponse({'id': "123", 'name': "Test Name"})
+        mock = self._mockGetResponse({'id': "123", 'name': "Test Name"})
         board = self.trello.getBoardById("123")
+        mock.assert_called_once_with(
+            'https://api.trello.com/1/boards/123',
+            {}
+        )
         self.assertEqual(board.id, "123")
         self.assertEqual(board.name, "Test Name")
 
     def _mockGetResponse(self, json):
-        self.trello.get = MagicMock(return_value=json)
+        mock = MagicMock(return_value=json)
+        self.trello.get = mock
+        return mock
 
     def testGetZeroOwnedCards(self):
-        self._mockGetResponse([])
+        mock = self._mockGetResponse([])
         owned_cards = self.trello.getOwnedCards()
         self.assertEqual(owned_cards, [])
+        mock.assert_called_once_with(
+            'https://api.trello.com/1/members/me/cards',
+            {}
+        )
 
     def testGetOneOwnedCard(self):
         self._mockGetResponse([{
