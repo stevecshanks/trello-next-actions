@@ -17,22 +17,14 @@ class Config:
         self._values[key] = value
 
     def loadFromFile(self, file_name):
-        if self._doesFileExist(file_name):
-            try:
-                self._values = self._getValuesFromFile(file_name)
-            except json.decoder.JSONDecodeError:
-                raise ParseError("'" + file_name + "' is not valid JSON")
-        else:
-            raise FileNotFoundError("File " + file_name + " not found")
+        try:
+            self._setValuesFromFile(file_name)
+        except json.decoder.JSONDecodeError:
+            raise ParseError("'" + file_name + "' is not valid JSON")
 
-    def _getValuesFromFile(self, file_name):
-        json_data = {}
+    def _setValuesFromFile(self, file_name):
         with open(file_name, 'r') as f:
-            json_data = json.load(f)
-        return json_data
-
-    def _doesFileExist(self, file_name):
-        return os.path.exists(file_name)
+            self._values = json.load(f)
 
 
 class ParseError(ValueError):
