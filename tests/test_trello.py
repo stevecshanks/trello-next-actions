@@ -3,7 +3,7 @@ import nextactions
 import requests
 from nextactions.config import Config
 from nextactions.trello import Trello
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestTrello(unittest.TestCase):
@@ -43,18 +43,21 @@ class TestTrello(unittest.TestCase):
                     self._makeRequestWithStatusCode(request_type, code)
 
     def _makeRequestWithStatusCode(self, request_type, status_code):
-        self._mockRequestsMethodToReturnCode(request_type, status_code)
+        mock = self._getRequestsMock(request_type, status_code)
         method = self._getTrelloMethodForRequest(request_type)
-        return method("fake url", {})
+        with patch(self._getRequestsMethodName(request_type), mock):
+            return method("fake url", {})
 
-    def _mockRequestsMethodToReturnCode(self, request_type, status_code):
+    def _getRequestsMock(self, request_type, status_code):
         fake_response = FakeResponse(status_code)
         mock = MagicMock(return_value=fake_response)
-        setattr(requests, request_type, mock)
         return mock
 
     def _getTrelloMethodForRequest(self, request_type):
         return getattr(self.trello, request_type)
+
+    def _getRequestsMethodName(self, request_type):
+        return 'requests.' + request_type
 
     def testGetRequestMadeWithDataAndAuth(self):
         self._testRequestMadeWithDataAndAuth('get')
@@ -67,9 +70,10 @@ class TestTrello(unittest.TestCase):
 
     def _testRequestMadeWithDataAndAuth(self, request_type):
         data = {'test': "123"}
-        mock = self._mockRequestsMethodToReturnCode(request_type, 200)
+        mock = self._getRequestsMock(request_type, 200)
         method = self._getTrelloMethodForRequest(request_type)
-        method("fake url", data)
+        with patch(self._getRequestsMethodName(request_type), mock):
+            method("fake url", data)
         expected = {'test': "123", 'key': "456", 'token': "789"}
         mock.assert_called_once_with("fake url", expected)
 
