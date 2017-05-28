@@ -18,8 +18,7 @@ class Trello:
         return self._makeRequest('put', url, data)
 
     def _makeRequest(self, request_type, url, data):
-        method_name = "_make" + request_type.capitalize() + "Request"
-        method = getattr(self, method_name)
+        method = getattr(requests, request_type)
         response = method(url, self._addAuthToData(data))
         return self._getResponseJSONOrRaiseError(response)
 
@@ -32,15 +31,6 @@ class Trello:
             'key': self._config.get('application_key'),
             'token': self._config.get('auth_token')
         }
-
-    def _makeGetRequest(self, url, data):
-        return requests.get(url, data)
-
-    def _makePostRequest(self, url, data):
-        return requests.post(url, data)
-
-    def _makePutRequest(self, url, data):
-        return requests.put(url, data)
 
     def _getResponseJSONOrRaiseError(self, response):
         if response.status_code != 200:

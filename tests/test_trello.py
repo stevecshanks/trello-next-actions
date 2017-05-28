@@ -1,5 +1,6 @@
 import unittest
 import nextactions
+import requests
 from nextactions.config import Config
 from nextactions.trello import Trello
 from unittest.mock import MagicMock
@@ -52,8 +53,7 @@ class TestTrello(unittest.TestCase):
     def _mockMakeRequestToReturnCode(self, request_type, status_code):
         fake_response = FakeResponse(status_code)
         mock = MagicMock(return_value=fake_response)
-        method_to_mock = self._getMakeRequestMethodName(request_type)
-        setattr(self.trello, method_to_mock, mock)
+        setattr(requests, request_type, mock)
         return mock
 
     def _getMakeRequestMethodName(self, request_type):
