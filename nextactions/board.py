@@ -13,7 +13,7 @@ class Board:
         json = self._trello.get(
             'https://api.trello.com/1/boards/' + self.id + '/lists?cards=none'
         )
-        return [List(j) for j in json]
+        return [List(self._trello, j) for j in json]
 
     def getListByName(self, name):
         matches = [l for l in self.getLists() if l.name == name]

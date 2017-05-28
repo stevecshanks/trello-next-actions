@@ -29,8 +29,15 @@ class Trello:
         else:
             return response.json()
 
-    def getBoardById(self, id):
-        json = self.get('https://api.trello.com/1/boards/' + id)
+    def post(self, url, data):
+        response = self._makePostRequest(url, data)
+        return self._getResponseJSONOrRaiseError(response)
+
+    def _makePostRequest(url, data):
+        return requests.post(url, data, self._getAuth())
+
+    def getBoardById(self, board_id):
+        json = self.get('https://api.trello.com/1/boards/' + board_id)
         return Board(self, json)
 
     def getOwnedCards(self):

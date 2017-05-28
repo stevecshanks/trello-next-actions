@@ -9,10 +9,10 @@ class TestTrello(unittest.TestCase):
 
     def setUp(self):
         self.trello = Trello(None)
+        self.bad_status_codes = [400, 401, 404, 500]
 
-    def testBadResponseCodeRaisesError(self):
-        codes = [400, 401, 404, 500]
-        for code in codes:
+    def testBadGetResponseRaisesError(self):
+        for code in self.bad_status_codes:
             with self.subTest(code=code):
                 with self.assertRaises(nextactions.trello.APIError):
                     self._testGetWithStatusCode(code)
@@ -24,6 +24,21 @@ class TestTrello(unittest.TestCase):
 
     def testGetWith200(self):
         json = self._testGetWithStatusCode(200)
+        self.assertEqual(json, {})
+
+    def testBadPostResponseRaisesError(self):
+        for code in self.bad_status_codes:
+            with self.subTest(code=code):
+                with self.assertRaises(nextactions.trello.APIError):
+                    self._testPostWithStatusCode(code)
+
+    def _testPostWithStatusCode(self, status_code):
+        fake_response = FakeResponse(status_code)
+        self.trello._makePostRequest = MagicMock(return_value=fake_response)
+        return self.trello.post("fake url", {})
+
+    def testPostWith200(self):
+        json = self._testPostWithStatusCode(200)
         self.assertEqual(json, {})
 
     def testGetBoard(self):
