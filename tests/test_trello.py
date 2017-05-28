@@ -8,33 +8,10 @@ from unittest.mock import MagicMock
 class TestTrello(unittest.TestCase):
 
     def setUp(self):
-        self.trello = Trello(Config())
-        self.bad_status_codes = [400, 401, 404, 500]
-
-    def _getMakeRequestMethodName(self, request_type):
-        return "_make" + request_type.capitalize() + "Request"
-
-    def _mockRequestToReturnCode(self, request_type, status_code):
-        fake_response = FakeResponse(status_code)
-        mock = MagicMock(return_value=fake_response)
-        method_to_mock = self._getMakeRequestMethodName(request_type)
-        setattr(self.trello, method_to_mock, mock)
-
-        return getattr(self.trello, request_type)
-
-    def _testRequestOk(self, request_type):
-        json = self._testRequestWithStatusCode(request_type, 200)
-        self.assertEqual(json, {})
-
-    def _testRequestWithStatusCode(self, request_type, status_code):
-        method = self._mockRequestToReturnCode(request_type, status_code)
-        return method("fake url", {})
-
-    def _testBadResponseRaisesError(self, request_type):
-        for code in self.bad_status_codes:
-            with self.subTest(code=code):
-                with self.assertRaises(nextactions.trello.APIError):
-                    self._testRequestWithStatusCode(request_type, code)
+        config = Config()
+        config.set('application_key', "456")
+        config.set('auth_token', "789")
+        self.trello = Trello(config)
 
     def testGetRequestOk(self):
         self._testRequestOk('get')
@@ -48,38 +25,50 @@ class TestTrello(unittest.TestCase):
     def testPostRequestErrors(self):
         self._testBadResponseRaisesError('post')
 
-    def testGetAuth(self):
-        config = Config()
-        config.set('application_key', "dummy key")
-        config.set('auth_token', "dummy token")
-        trello = Trello(config)
-        auth = trello._getAuth()
-        self.assertEqual(auth['key'], "dummy key")
-        self.assertEqual(auth['token'], "dummy token")
+    def _mockRequestToReturnCode(self, request_type, status_code):
+        self._mockMakeRequestToReturnCode(request_type, status_code)
+        return self._getMethodForRequest(request_type)
 
-    def _testRequestMadeWithDataAndAuth(self, request_type):
-        data = {'test': "123"}
-        config = Config()
-        config.set('application_key', "456")
-        config.set('auth_token', "789")
-        self.trello = Trello(config)
+    def _getMethodForRequest(self, request_type):
+        return getattr(self.trello, request_type)
+
+    def _mockMakeRequestToReturnCode(self, request_type, status_code):
+        fake_response = FakeResponse(status_code)
+        mock = MagicMock(return_value=fake_response)
         method_to_mock = self._getMakeRequestMethodName(request_type)
-        mock = MagicMock(return_value=FakeResponse(200))
         setattr(self.trello, method_to_mock, mock)
-        method = getattr(self.trello, request_type)
-        method("fake url", data)
-        expected_data = {
-            'test': "123",
-            'key': "456",
-            'token': "789"
-        }
-        mock.assert_called_once_with("fake url", expected_data)
+        return mock
+
+    def _getMakeRequestMethodName(self, request_type):
+        return "_make" + request_type.capitalize() + "Request"
+
+    def _testRequestOk(self, request_type):
+        json = self._testRequestWithStatusCode(request_type, 200)
+        self.assertEqual(json, {})
+
+    def _testRequestWithStatusCode(self, request_type, status_code):
+        method = self._mockRequestToReturnCode(request_type, status_code)
+        return method("fake url", {})
+
+    def _testBadResponseRaisesError(self, request_type):
+        for code in [400, 401, 404, 500]:
+            with self.subTest(code=code):
+                with self.assertRaises(nextactions.trello.APIError):
+                    self._testRequestWithStatusCode(request_type, code)
 
     def testGetRequestMadeWithDataAndAuth(self):
         self._testRequestMadeWithDataAndAuth('get')
 
     def testPostRequestMadeWithDataAndAuth(self):
         self._testRequestMadeWithDataAndAuth('post')
+
+    def _testRequestMadeWithDataAndAuth(self, request_type):
+        data = {'test': "123"}
+        mock = self._mockMakeRequestToReturnCode(request_type, 200)
+        method = self._getMethodForRequest(request_type)
+        method("fake url", data)
+        expected = {'test': "123", 'key': "456", 'token': "789"}
+        mock.assert_called_once_with("fake url", expected)
 
     def testGetBoard(self):
         self._mockGetResponse({'id': "123", 'name': "Test Name"})
