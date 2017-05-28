@@ -11,5 +11,5 @@ class List:
             'description': description,
             'idList': self.id
         }
-        json = self._trello.post('https://api.trello.com/1/cards/', data)
+        json = self._trello.post('https://api.trello.com/1/cards', data)
         return json['id']
