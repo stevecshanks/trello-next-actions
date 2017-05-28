@@ -31,12 +31,23 @@ class TestTrello(unittest.TestCase):
     def testPutRequestErrors(self):
         self._testBadResponseRaisesError('put')
 
+    def _testRequestOk(self, request_type):
+        json = self._testRequestWithStatusCode(request_type, 200)
+        self.assertEqual(json, {})
+
+    def _testBadResponseRaisesError(self, request_type):
+        for code in [400, 401, 404, 500]:
+            with self.subTest(code=code):
+                with self.assertRaises(nextactions.trello.APIError):
+                    self._testRequestWithStatusCode(request_type, code)
+
+    def _testRequestWithStatusCode(self, request_type, status_code):
+        method = self._mockRequestToReturnCode(request_type, status_code)
+        return method("fake url", {})
+
     def _mockRequestToReturnCode(self, request_type, status_code):
         self._mockMakeRequestToReturnCode(request_type, status_code)
         return self._getMethodForRequest(request_type)
-
-    def _getMethodForRequest(self, request_type):
-        return getattr(self.trello, request_type)
 
     def _mockMakeRequestToReturnCode(self, request_type, status_code):
         fake_response = FakeResponse(status_code)
@@ -48,19 +59,8 @@ class TestTrello(unittest.TestCase):
     def _getMakeRequestMethodName(self, request_type):
         return "_make" + request_type.capitalize() + "Request"
 
-    def _testRequestOk(self, request_type):
-        json = self._testRequestWithStatusCode(request_type, 200)
-        self.assertEqual(json, {})
-
-    def _testRequestWithStatusCode(self, request_type, status_code):
-        method = self._mockRequestToReturnCode(request_type, status_code)
-        return method("fake url", {})
-
-    def _testBadResponseRaisesError(self, request_type):
-        for code in [400, 401, 404, 500]:
-            with self.subTest(code=code):
-                with self.assertRaises(nextactions.trello.APIError):
-                    self._testRequestWithStatusCode(request_type, code)
+    def _getMethodForRequest(self, request_type):
+        return getattr(self.trello, request_type)
 
     def testGetRequestMadeWithDataAndAuth(self):
         self._testRequestMadeWithDataAndAuth('get')
