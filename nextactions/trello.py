@@ -27,9 +27,13 @@ class Trello:
         }
 
     def _makeGetRequest(self, url, data):
+        if self._config.get('debug'):
+            print("GET " + url)
         return requests.get(url, data)
 
     def _makePostRequest(self, url, data):
+        if self._config.get('debug'):
+            print("POST " + url)
         return requests.post(url, data)
 
     def _getResponseJSONOrRaiseError(self, response):

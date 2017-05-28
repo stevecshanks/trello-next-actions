@@ -74,11 +74,11 @@ def sync_board(trello, board):
         c.execute('SELECT id '
                   'FROM next_action WHERE project_board_id = ? '
                   'AND project_next_action_id = ?',
-                  (board.id, next_action_card['id']))
+                  (board.id, next_action_card.id))
         next_action = c.fetchone()
 
         if next_action is not None:
-            exclude_list.append(next_action_card['id'])
+            exclude_list.append(next_action_card.id)
 
     # Delete everything else for this project board
     to_delete_query = ('SELECT gtd_next_action_id FROM next_action '
@@ -101,15 +101,15 @@ def sync_board(trello, board):
 
     # Create any new cards
     for next_action_card in board.nextActionList:
-        if next_action_card['id'] not in exclude_list:
+        if next_action_card.id not in exclude_list:
             gtd_next_action_id = trello_create_card(trello,
                                                     board.name + " - "
-                                                    + next_action_card['name'],
-                                                    next_action_card['url'])
+                                                    + next_action_card.name,
+                                                    next_action_card.url)
             c.execute('INSERT INTO next_action (project_board_id, '
                       'project_next_action_id, gtd_next_action_id) '
                       'VALUES (?, ?, ?)',
-                      (board.id, next_action_card['id'], gtd_next_action_id))
+                      (board.id, next_action_card.id, gtd_next_action_id))
             message_list.append(board.name + ": Created card "
                                 + gtd_next_action_id)
 
@@ -137,22 +137,6 @@ def reset():
     conn.close()
 
     return message_list
-
-
-def trello_get_request(url):
-    try:
-        response = requests.get(url)
-        return trello_handle_response(url, response)
-    except Exception:
-        print_error_and_exit("Failed API request to " + url)
-
-
-def trello_post_request(url, data):
-    try:
-        response = requests.post(url, data)
-        return trello_handle_response(url, response)
-    except Exception:
-        print_error_and_exit("Failed API request to " + url)
 
 
 def trello_put_request(url, data):
@@ -183,48 +167,36 @@ def get_list_id(board, board_id, list_name):
     return list_.id
 
 
-def get_cards_in_list(trello, board_id, list_name):
-    board = trello.getBoardById(board_id)
-    list_id = get_list_id(board, board_id, list_name)
-
-    # List the cards on that list
-    cards_in_list = trello_get_request('https://api.trello.com/1/lists/'
-                                       + list_id + '/cards'
-                                       + '?key=' + application_key
-                                       + '&token=' + auth_token)
-
-    return cards_in_list
-
-
 def get_next_action_per_project(trello):
     next_action_list = []
     error_list = []
 
-    try:
-        project_card_list = get_cards_in_list(trello, gtd_board_id, 'Projects')
-    except ValueError as e:
-        print_error_and_exit(str(e))
+    gtd_board = trello.getBoardById(gtd_board_id)
+    project_list = gtd_board.getListByName('Projects')
+    project_card_list = project_list.getCards()
 
     for project_card in project_card_list:
         try:
             # The description of each card should contain the URL
-            url = project_card['desc']
+            url = project_card.description
 
             # Parse the URL to get the short link
             url_bits = urlparse(url)
             # URLs all seem to be of the form /x/xyz123/nice-description
             path_bits = url_bits.path.split('/')
             short_id = path_bits[2]
-            todo_card_list = get_cards_in_list(trello, short_id, 'Todo')
+            project_board = trello.getBoardById(short_id)
+            todo_list = project_board.getListByName('Todo')
+            todo_card_list = todo_list.getCards()
 
             if len(todo_card_list) > 0:
                 next_action_card = todo_card_list[0]
                 next_action_list.append([project_card, next_action_card])
             else:
-                error_list.append(project_card['name']
+                error_list.append(project_card.name
                                   + " - Todo list is empty")
         except ValueError as e:
-            error_list.append(project_card['name'] + " - " + str(e))
+            error_list.append(project_card.name + " - " + str(e))
 
     return next_action_list, error_list
 
@@ -237,8 +209,7 @@ def get_boards_with_owned_cards(trello):
         if card.board_id not in board_map:
             board_map[card.board_id] = trello.getBoardById(card.board_id)
 
-        card_dict = {'id': card.id, 'name': card.name, 'url': "TODO"}
-        board_map[card.board_id].nextActionList.append(card_dict)
+        board_map[card.board_id].nextActionList.append(card)
 
     return board_map
 
@@ -253,11 +224,11 @@ def sync_next_actions(trello):
     error_list += per_project_error_list
 
     for project_card, next_action_card in per_project_list:
-        board_id = next_action_card['idBoard']
+        board_id = next_action_card.board_id
         if board_id not in board_map:
             board_map[board_id] = Board(
                 trello,
-                {'id': board_id, 'name': project_card['name']})
+                {'id': board_id, 'name': project_card.name})
 
         board_map[board_id].nextActionList.append(next_action_card)
 

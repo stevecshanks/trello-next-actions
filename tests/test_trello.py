@@ -98,7 +98,9 @@ class TestTrello(unittest.TestCase):
         self._mockGetResponse([{
             'id': "123",
             'name': "Test Name",
-            'idBoard': "456"
+            'idBoard': "456",
+            'desc': "Test",
+            'url': "fake"
         }])
         owned_cards = self.trello.getOwnedCards()
         self.assertEqual(len(owned_cards), 1)
