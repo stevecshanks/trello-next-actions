@@ -43,21 +43,9 @@ def setup_database():
 
 def trello_create_card(trello, name, description):
     board = trello.getBoardById(gtd_board_id)
-    try:
-        list_id = get_list_id(board, gtd_board_id, 'Next Actions')
-    except ValueError:
-        print_error_and_exit("Could not find ID for Next Actions list")
-
-    data = {
-        'name': name,
-        'desc': description + "\r\n\r\nAuto-created by TrelloNextActions",
-        'idList': list_id,
-        'key': application_key,
-        'token': auth_token
-    }
-
-    response = trello_post_request('https://api.trello.com/1/cards/', data)
-    return response['id']
+    list_ = board.getListByName("Next Actions")
+    description = description + "\r\n\r\nAuto-created by TrelloNextActions"
+    return list_.createCard(name, description)
 
 
 def trello_delete_card(card_id):

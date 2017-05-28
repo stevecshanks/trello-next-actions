@@ -29,7 +29,7 @@ class Trello:
     def _makeGetRequest(self, url, data):
         return requests.get(url, data)
 
-    def _makePostRequest(url, data):
+    def _makePostRequest(self, url, data):
         return requests.post(url, data)
 
     def _getResponseJSONOrRaiseError(self, response):
