@@ -9,17 +9,21 @@ class Trello:
         self._config = config
 
     def get(self, url, data):
-        response = self._makeGetRequest(url, data)
+        response = self._makeGetRequest(url, self._addAuthToData(data))
         return self._getResponseJSONOrRaiseError(response)
 
-    def _makeGetRequest(self, url, data):
-        return requests.get(url, self._getAuth())
+    def _addAuthToData(self, data):
+        auth = self._getAuth()
+        return {**data, **auth}
 
     def _getAuth(self):
         return {
             'key': self._config.get('application_key'),
             'token': self._config.get('auth_token')
         }
+
+    def _makeGetRequest(self, url, data):
+        return requests.get(url, data)
 
     def _getResponseJSONOrRaiseError(self, response):
         if response.status_code != 200:
@@ -30,11 +34,11 @@ class Trello:
             return response.json()
 
     def post(self, url, data):
-        response = self._makePostRequest(url, data)
+        response = self._makePostRequest(url, self._addAuthToData(data))
         return self._getResponseJSONOrRaiseError(response)
 
     def _makePostRequest(url, data):
-        return requests.post(url, data, self._getAuth())
+        return requests.post(url, data)
 
     def getBoardById(self, board_id):
         json = self.get('https://api.trello.com/1/boards/' + board_id)
