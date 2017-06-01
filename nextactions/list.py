@@ -23,3 +23,7 @@ class List:
             {}
         )
         return [Card(self._trello, j) for j in json]
+
+    def getTopCard(self):
+        cards = self.getCards()
+        return cards[0] if len(cards) else None

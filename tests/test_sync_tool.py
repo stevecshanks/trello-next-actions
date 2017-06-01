@@ -52,3 +52,14 @@ class TestSyncTool(unittest.TestCase):
         self.trello.archiveCard = mock
         self.sync_tool.reset()
         mock.assert_called_once_with("123")
+
+    def testGetProjectBoards(self):
+        project_list = List(self.trello, {'id': "789", 'name': "Projects"})
+        self.board.getListByName = MagicMock(return_value=project_list)
+        card = Card(self.trello, self._getCardJson())
+        project_board = Board(None, {'id': "678", 'name': "Dummy"})
+        card.getProjectBoard = MagicMock(return_value=project_board)
+        project_list.getCards = MagicMock(return_value=[card])
+        project_boards = self.sync_tool.getProjectBoards()
+        self.assertEqual(len(project_boards), 1)
+        self.assertEqual(project_boards[0].id, "678")

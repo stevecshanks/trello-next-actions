@@ -12,3 +12,8 @@ class SyncTool:
     def reset(self):
         for c in self.getNextActionCards():
             self._trello.archiveCard(c.id)
+
+    def getProjectBoards(self):
+        board = self._trello.getBoardById(self._config.get('gtd_board_id'))
+        list_ = board.getListByName('Projects')
+        return [c.getProjectBoard() for c in list_.getCards()]
