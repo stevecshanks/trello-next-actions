@@ -63,3 +63,18 @@ class TestSyncTool(unittest.TestCase):
         project_boards = self.sync_tool.getProjectBoards()
         self.assertEqual(len(project_boards), 1)
         self.assertEqual(project_boards[0].id, "678")
+
+    def testGetTopTodoCardsForNonExistentList(self):
+        self.board.getListByName = MagicMock(return_value=None)
+        self.sync_tool.getProjectBoards = MagicMock(return_value=[self.board])
+        self.assertEqual(self.sync_tool.getTopTodoCards(), [])
+
+    def testGetTopTodoCards(self):
+        boards = [self.board, self.board]
+        self.sync_tool.getProjectBoards = MagicMock(return_value=boards)
+        card = Card(None, self._getCardJson())
+        self.list.getCards = MagicMock(return_value=[card])
+        todo_cards = self.sync_tool.getTopTodoCards()
+        self.assertEqual(len(todo_cards), 2)
+        self.assertEqual(todo_cards[0].id, "123")
+        self.assertEqual(todo_cards[1].id, "123")

@@ -17,3 +17,27 @@ class SyncTool:
         board = self._trello.getBoardById(self._config.get('gtd_board_id'))
         list_ = board.getListByName('Projects')
         return [c.getProjectBoard() for c in list_.getCards()]
+
+    def getTopTodoCards(self):
+        todo_cards = []
+        for board in self.getProjectBoards():
+            todo_list = board.getListByName('Todo')
+            if todo_list is not None:
+                todo_cards.append(todo_list.getTopCard())
+        return todo_cards
+
+    # def sync(self):
+    #     next_actions = self.getNextActionCards()
+    #     owned_cards = self._trello.getOwnedCards()
+    #     todo_cards = self.getTopTodoCards()
+    #
+    #     cards_to_sync = owned_cards + todo_cards - next_actions
+    #     cards_to_archive = next_actions - cards_to_sync
+    #
+    #     for card in cards_to_sync:
+    #         self.syncCard(card)
+    #
+    #     for card in cards_to_archive:
+    #         trello.archiveCard(card.id)
+    #
+    #     return (cards_to_sync, cards_to_archive)
