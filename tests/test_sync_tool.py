@@ -102,7 +102,7 @@ class TestSyncTool(unittest.TestCase):
 
     def testSyncIgnoresExistingNextActions(self):
         url = "https://trello.com/c/12345678"
-        card = Card(None, self._getCardJson({'url': url}))
+        card = Card(None, self._getCardJson({'id': "456", 'url': url}))
         next_action_card = Card(None, self._getCardJson({'desc': url}))
         self.sync_tool.getNextActionCards = MagicMock(
             return_value=[next_action_card]
