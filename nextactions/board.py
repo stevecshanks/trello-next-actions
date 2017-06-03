@@ -7,8 +7,6 @@ class Board:
         self._trello = trello
         self.id = json['id']
         self.name = json['name']
-        # TODO remove me
-        self.nextActionList = []
 
     def getLists(self):
         json = self._trello.get(
