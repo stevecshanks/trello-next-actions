@@ -11,7 +11,7 @@ class List:
     def createCard(self, name, description):
         data = {
             'name': name,
-            'description': description,
+            'desc': description,
             'idList': self.id
         }
         json = self._trello.post('https://api.trello.com/1/cards', data)

@@ -18,7 +18,7 @@ class TestList(unittest.TestCase):
         self.assertEqual(card_id, "456")
         mock.assert_called_once_with(
             'https://api.trello.com/1/cards',
-            {'name': "Name", 'description': "Description", 'idList': "123"}
+            {'name': "Name", 'desc': "Description", 'idList': "123"}
         )
 
     def testGetCardsForEmptyList(self):

@@ -90,4 +90,3 @@ ENV/
 
 # Trello Next Actions stuff:
 .trellonextactions.json
-trellonextactions.db

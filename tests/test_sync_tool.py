@@ -50,8 +50,9 @@ class TestSyncTool(unittest.TestCase):
         self.sync_tool.getNextActionCards = MagicMock(return_value=[card])
         mock = MagicMock()
         self.trello.archiveCard = mock
-        self.sync_tool.reset()
+        archived = self.sync_tool.reset()
         mock.assert_called_once_with("123")
+        self.assertEqual(archived, [card])
 
     def testGetProjectBoards(self):
         project_list = List(self.trello, {'id': "789", 'name': "Projects"})
@@ -120,7 +121,7 @@ class TestSyncTool(unittest.TestCase):
 
     def testSyncCreatesNextActionCards(self):
         card1 = Card(None, self._getCardJson())
-        card2= Card(None, self._getCardJson({'id': "456"}))
+        card2 = Card(None, self._getCardJson({'id': "456"}))
         self.sync_tool.getNextActionCards = MagicMock(return_value=[])
         self.trello.getOwnedCards = MagicMock(return_value=[card1])
         self.sync_tool.getTopTodoCards = MagicMock(return_value=[card2])
