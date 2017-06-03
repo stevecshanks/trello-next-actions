@@ -49,8 +49,6 @@ def print_error_and_exit(message):
 
 
 def load_config(config_file):
-    global gtd_board_id
-
     config = Config()
     config.loadFromFile(config_file)
 
