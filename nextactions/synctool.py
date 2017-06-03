@@ -1,5 +1,6 @@
 from nextactions.card import Card
 
+
 class SyncTool:
 
     def __init__(self, config, trello):

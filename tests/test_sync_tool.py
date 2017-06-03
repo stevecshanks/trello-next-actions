@@ -4,7 +4,7 @@ from nextactions.trello import Trello
 from nextactions.board import Board
 from nextactions.list import List
 from nextactions.config import Config
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 from nextactions.card import Card
 
 
@@ -116,4 +116,19 @@ class TestSyncTool(unittest.TestCase):
         self.trello.archiveCard.assert_not_called()
         self.sync_tool.syncCard.assert_not_called()
         self.assertEqual(created, [])
+        self.assertEqual(archived, [])
+
+    def testSyncCreatesNextActionCards(self):
+        card1 = Card(None, self._getCardJson())
+        card2= Card(None, self._getCardJson({'id': "456"}))
+        self.sync_tool.getNextActionCards = MagicMock(return_value=[])
+        self.trello.getOwnedCards = MagicMock(return_value=[card1])
+        self.sync_tool.getTopTodoCards = MagicMock(return_value=[card2])
+        self.trello.archiveCard = MagicMock()
+        self.sync_tool.syncCard = MagicMock()
+
+        created, archived = self.sync_tool.sync()
+        self.trello.archiveCard.assert_not_called()
+        self.sync_tool.syncCard.assert_has_calls([call(card1), call(card2)])
+        self.assertEqual(created, [card1, card2])
         self.assertEqual(archived, [])
