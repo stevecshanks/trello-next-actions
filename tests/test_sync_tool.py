@@ -78,3 +78,42 @@ class TestSyncTool(unittest.TestCase):
         self.assertEqual(len(todo_cards), 2)
         self.assertEqual(todo_cards[0].id, "123")
         self.assertEqual(todo_cards[1].id, "123")
+
+    def testSyncCard(self):
+        card = Card(None, self._getCardJson())
+        self.list.createCard = MagicMock()
+        self.sync_tool.syncCard(card)
+        self.list.createCard.assert_called_once_with(
+            "GTD - Card",
+            "fake\n\n" + Card.AUTO_GENERATED_TEXT
+        )
+
+    def testSyncArchivesOldNextActions(self):
+        card = Card(None, self._getCardJson())
+        self.sync_tool.getNextActionCards = MagicMock(return_value=[card])
+        self.trello.getOwnedCards = MagicMock(return_value=[])
+        self.sync_tool.getTopTodoCards = MagicMock(return_value=[])
+        self.trello.archiveCard = MagicMock()
+
+        created, archived = self.sync_tool.sync()
+        self.trello.archiveCard.assert_called_once_with("123")
+        self.assertEqual(created, [])
+        self.assertEqual(archived, [card])
+
+    def testSyncIgnoresExistingNextActions(self):
+        url = "https://trello.com/c/12345678"
+        card = Card(None, self._getCardJson({'url': url}))
+        next_action_card = Card(None, self._getCardJson({'desc': url}))
+        self.sync_tool.getNextActionCards = MagicMock(
+            return_value=[next_action_card]
+        )
+        self.trello.getOwnedCards = MagicMock(return_value=[])
+        self.sync_tool.getTopTodoCards = MagicMock(return_value=[card])
+        self.trello.archiveCard = MagicMock()
+        self.sync_tool.syncCard = MagicMock()
+
+        created, archived = self.sync_tool.sync()
+        self.trello.archiveCard.assert_not_called()
+        self.sync_tool.syncCard.assert_not_called()
+        self.assertEqual(created, [])
+        self.assertEqual(archived, [])

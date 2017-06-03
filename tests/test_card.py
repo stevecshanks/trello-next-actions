@@ -38,3 +38,24 @@ class TestCard(unittest.TestCase):
         project_board = card.getProjectBoard()
         trello.getBoardById.assert_called_once_with("789")
         self.assertEqual(project_board, board)
+
+    def testNotEqual(self):
+        card1 = Card(None, self._getCardJson())
+        card2 = Card(None, self._getCardJson({'id': "456"}))
+        self.assertFalse(card1 == card2)
+
+    def testEqual(self):
+        card1 = Card(None, self._getCardJson())
+        card2 = Card(None, self._getCardJson())
+        self.assertEqual(card1, card2)
+
+    def testLinksTo(self):
+        card1 = Card(None, self._getCardJson({
+            'desc': "https://trello.com/c/test\n\n"
+                    + Card.AUTO_GENERATED_TEXT
+        }))
+        card2 = Card(None, self._getCardJson({
+            'url': "https://trello.com/c/test"
+        }))
+        self.assertFalse(card2.linksTo(card1))
+        self.assertTrue(card1.linksTo(card2))

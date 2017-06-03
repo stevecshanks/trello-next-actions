@@ -1,3 +1,5 @@
+from nextactions.card import Card
+
 class SyncTool:
 
     def __init__(self, config, trello):
@@ -26,18 +28,25 @@ class SyncTool:
                 todo_cards.append(todo_list.getTopCard())
         return todo_cards
 
-    # def sync(self):
-    #     next_actions = self.getNextActionCards()
-    #     owned_cards = self._trello.getOwnedCards()
-    #     todo_cards = self.getTopTodoCards()
-    #
-    #     cards_to_sync = owned_cards + todo_cards - next_actions
-    #     cards_to_archive = next_actions - cards_to_sync
-    #
-    #     for card in cards_to_sync:
-    #         self.syncCard(card)
-    #
-    #     for card in cards_to_archive:
-    #         trello.archiveCard(card.id)
-    #
-    #     return (cards_to_sync, cards_to_archive)
+    def syncCard(self, card):
+        card_board = self._trello.getBoardById(card.board_id)
+        gtd_board = self._trello.getBoardById(self._config.get('gtd_board_id'))
+        next_actions_list = gtd_board.getListByName('Next Actions')
+
+        name = card_board.name + " - " + card.name
+        description = card.url + "\n\n" + Card.AUTO_GENERATED_TEXT
+        next_actions_list.createCard(name, description)
+
+    def sync(self):
+        next_actions = self.getNextActionCards()
+        all_cards = self._trello.getOwnedCards() + self.getTopTodoCards()
+
+        cards_to_sync = [card for card in all_cards if card not in
+                         [l for l in next_actions if l.linksTo(card)]]
+        cards_to_archive = [action for action in next_actions if action not in
+                            [c for c in all_cards if action.linksTo(c)]]
+        for card in cards_to_sync:
+            self.syncCard(card)
+        for card in cards_to_archive:
+            self._trello.archiveCard(card.id)
+        return (cards_to_sync, cards_to_archive)

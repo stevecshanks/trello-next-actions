@@ -27,3 +27,9 @@ class Card:
             return path_segments[2]
         else:
             raise ValueError("Description could not be parsed as project URL")
+
+    def __eq__(self, other):
+        return self.id == other.id
+
+    def linksTo(self, other):
+        return self.description.startswith(other.url)
