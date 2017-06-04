@@ -1,7 +1,5 @@
-import json
 import unittest
 import nextactions
-import os
 from nextactions.config import Config
 from unittest.mock import patch, mock_open
 
