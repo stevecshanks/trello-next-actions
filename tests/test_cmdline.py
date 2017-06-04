@@ -1,7 +1,6 @@
 import nextactions.cmdline as cmdline
 import unittest
 import os
-import argparse
 from unittest.mock import MagicMock, patch, call
 
 

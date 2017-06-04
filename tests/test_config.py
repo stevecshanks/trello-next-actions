@@ -3,7 +3,7 @@ import unittest
 import nextactions
 import os
 from nextactions.config import Config
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import patch, mock_open
 
 
 class TestConfig(unittest.TestCase):

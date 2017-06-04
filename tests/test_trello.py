@@ -1,6 +1,5 @@
 import unittest
 import nextactions
-import requests
 from nextactions.config import Config
 from nextactions.trello import Trello
 from unittest.mock import MagicMock, patch
