@@ -38,12 +38,27 @@ def getConfigFileName(options):
 
 
 def handleAction(name, config):
+    trello = Trello(config)
+    sync_tool = SyncTool(config, trello)
     if name == 'sync':
-        pass
+        created, archived = sync_tool.sync()
+        print_card_list("Created", created)
+        print_card_list("Archived", archived)
     elif name == 'reset':
-        pass
+        archived = sync_tool.reset()
+        print_card_list("Archived", archived)
     else:
         raise ValueError("'" + name + "' is not a valid action")
+
+
+def print_card_list(name, card_list):
+    if not len(card_list):
+        return
+    print(name + ":")
+    print()
+    for c in card_list:
+        print(" - " + c.name + " (" + c.id + ")")
+    print()
 
 
 if __name__ == '__main__':
