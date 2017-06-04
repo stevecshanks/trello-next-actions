@@ -48,10 +48,9 @@ class TestSyncTool(unittest.TestCase):
     def testReset(self):
         card = Card(None, self._getCardJson())
         self.sync_tool.getNextActionCards = MagicMock(return_value=[card])
-        mock = MagicMock()
-        self.trello.archiveCard = mock
+        card.archive = MagicMock()
         archived = self.sync_tool.reset()
-        mock.assert_called_once_with("123")
+        card.archive.assert_called_once
         self.assertEqual(archived, [card])
 
     def testGetProjectBoards(self):
@@ -94,10 +93,10 @@ class TestSyncTool(unittest.TestCase):
         self.sync_tool.getNextActionCards = MagicMock(return_value=[card])
         self.trello.getOwnedCards = MagicMock(return_value=[])
         self.sync_tool.getTopTodoCards = MagicMock(return_value=[])
-        self.trello.archiveCard = MagicMock()
+        card.archive = MagicMock()
 
         created, archived = self.sync_tool.sync()
-        self.trello.archiveCard.assert_called_once_with("123")
+        card.archive.assert_called_once
         self.assertEqual(created, [])
         self.assertEqual(archived, [card])
 
@@ -110,11 +109,11 @@ class TestSyncTool(unittest.TestCase):
         )
         self.trello.getOwnedCards = MagicMock(return_value=[])
         self.sync_tool.getTopTodoCards = MagicMock(return_value=[card])
-        self.trello.archiveCard = MagicMock()
+        next_action_card.archive = MagicMock()
         self.sync_tool.syncCard = MagicMock()
 
         created, archived = self.sync_tool.sync()
-        self.trello.archiveCard.assert_not_called()
+        next_action_card.archive.assert_not_called()
         self.sync_tool.syncCard.assert_not_called()
         self.assertEqual(created, [])
         self.assertEqual(archived, [])
@@ -125,11 +124,9 @@ class TestSyncTool(unittest.TestCase):
         self.sync_tool.getNextActionCards = MagicMock(return_value=[])
         self.trello.getOwnedCards = MagicMock(return_value=[card1])
         self.sync_tool.getTopTodoCards = MagicMock(return_value=[card2])
-        self.trello.archiveCard = MagicMock()
         self.sync_tool.syncCard = MagicMock()
 
         created, archived = self.sync_tool.sync()
-        self.trello.archiveCard.assert_not_called()
         self.sync_tool.syncCard.assert_has_calls([call(card1), call(card2)])
         self.assertEqual(created, [card1, card2])
         self.assertEqual(archived, [])

@@ -59,3 +59,13 @@ class TestCard(unittest.TestCase):
         }))
         self.assertFalse(card2.linksTo(card1))
         self.assertTrue(card1.linksTo(card2))
+
+    def testArchive(self):
+        trello = Trello(None)
+        trello.put = MagicMock()
+        card = Card(trello, self._getCardJson())
+        card.archive()
+        trello.put.assert_called_once_with(
+            'https://api.trello.com/1/cards/123/closed',
+            {'value': "true"}
+        )

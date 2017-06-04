@@ -2,7 +2,6 @@
 import sys
 import getopt
 import os
-from nextactions.board import Board
 from nextactions.config import Config
 from nextactions.trello import Trello
 from nextactions.synctool import SyncTool

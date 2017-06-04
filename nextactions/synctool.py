@@ -15,7 +15,7 @@ class SyncTool:
     def reset(self):
         next_actions = self.getNextActionCards()
         for c in next_actions:
-            self._trello.archiveCard(c.id)
+            c.archive()
         return next_actions
 
     def getProjectBoards(self):
@@ -51,5 +51,5 @@ class SyncTool:
         for card in cards_to_sync:
             self.syncCard(card)
         for action in actions_to_archive:
-            self._trello.archiveCard(action.id)
+            action.archive()
         return (cards_to_sync, actions_to_archive)

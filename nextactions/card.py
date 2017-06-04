@@ -33,3 +33,9 @@ class Card:
 
     def linksTo(self, other):
         return self.description.startswith(other.url)
+
+    def archive(self):
+        self._trello.put(
+            'https://api.trello.com/1/cards/' + self.id + '/closed',
+            {'value': "true"}
+        )

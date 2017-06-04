@@ -114,15 +114,6 @@ class TestTrello(unittest.TestCase):
         self.assertEqual(owned_cards[0].id, "123")
         self.assertEqual(owned_cards[0].name, "Test Name")
 
-    def testArchiveCard(self):
-        mock = MagicMock()
-        self.trello.put = mock
-        self.trello.archiveCard("123")
-        mock.assert_called_once_with(
-            'https://api.trello.com/1/cards/123/closed',
-            {'value': "true"}
-        )
-
 
 class FakeResponse:
 
