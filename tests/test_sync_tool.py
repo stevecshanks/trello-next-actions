@@ -50,7 +50,7 @@ class TestSyncTool(unittest.TestCase):
         self.sync_tool.getNextActionCards = MagicMock(return_value=[card])
         card.archive = MagicMock()
         archived = self.sync_tool.reset()
-        card.archive.assert_called_once
+        card.archive.assert_called_once()
         self.assertEqual(archived, [card])
 
     def testGetProjectBoards(self):
