@@ -96,7 +96,7 @@ class TestSyncTool(unittest.TestCase):
         card.archive = MagicMock()
 
         created, archived = self.sync_tool.sync()
-        card.archive.assert_called_once
+        card.archive.assert_called_once()
         self.assertEqual(created, [])
         self.assertEqual(archived, [card])
 
