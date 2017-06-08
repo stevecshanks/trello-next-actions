@@ -45,9 +45,9 @@ class SyncTool:
         all_cards = self._trello.getOwnedCards() + self.getTopTodoCards()
 
         cards_to_sync = [c for c in all_cards
-                         if not [a for a in next_actions if a.linksTo(c)]]
+                         if not any(a.linksTo(c) for a in next_actions)]
         actions_to_archive = [a for a in next_actions
-                              if not [c for c in all_cards if a.linksTo(c)]]
+                              if not any(a.linksTo(c) for c in all_cards)]
         for card in cards_to_sync:
             self.syncCard(card)
         for action in actions_to_archive:
