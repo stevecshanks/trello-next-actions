@@ -7,9 +7,9 @@ from nextactions.synctool import SyncTool
 
 
 def main(args):
-    options = parseArgs(args)
-    config = getConfig(options)
     try:
+        options = parseArgs(args)
+        config = getConfig(options)
         handleAction(options.action, config)
     except Exception as e:
         sys.stderr.write("Error: " + str(e) + "\n")

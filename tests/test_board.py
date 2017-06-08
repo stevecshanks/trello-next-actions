@@ -12,18 +12,16 @@ class TestBoard(unittest.TestCase):
         self.board = Board(self.trello, json)
 
     def testGetListsCallsAPICorrectly(self):
-        mock = self._mockGetResponse()
+        self._mockGetResponse()
         self.board.getLists()
-        mock.assert_called_once_with(
+        self.trello.get.assert_called_once_with(
             'https://api.trello.com/1/boards/123/lists',
             {'cards': "none"}
         )
 
     def _mockGetResponse(self):
         fake_json = [{'id': "123", 'name': "Next Actions"}]
-        mock = MagicMock(return_value=fake_json)
-        self.trello.get = mock
-        return mock
+        self.trello.get = MagicMock(return_value=fake_json)
 
     def testGetListsOnEmptyBoard(self):
         self.trello.get = MagicMock(return_value=[])

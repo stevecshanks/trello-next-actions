@@ -8,7 +8,8 @@ from unittest.mock import MagicMock, patch, call
 class TestCmdLine(unittest.TestCase):
 
     def testNoOptionsLoadsDefaultConfig(self, load_from_file):
-        cmdline.main(['sync'])
+        with patch('nextactions.cmdline.handleAction', MagicMock()):
+            cmdline.main(['sync'])
         expected_file = os.path.join(
             os.path.expanduser('~'), '.trellonextactions.json'
         )
@@ -16,12 +17,14 @@ class TestCmdLine(unittest.TestCase):
 
     def testLoadDifferentConfig(self, load_from_file):
         expected_file = "test.txt"
-        cmdline.main(['--config=' + expected_file, 'sync'])
+        with patch('nextactions.cmdline.handleAction', MagicMock()):
+            cmdline.main(['--config=' + expected_file, 'sync'])
         load_from_file.assert_called_once_with(expected_file)
 
     def testActionIsRequired(self, load_from_file):
-        with self.assertRaises(SystemExit):
-            cmdline.main([])
+        with patch('sys.stderr.write', MagicMock()):
+            with self.assertRaises(SystemExit):
+                cmdline.main([])
 
     def testUnknownAction(self, load_from_file):
         m = MagicMock()

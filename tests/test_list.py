@@ -1,7 +1,7 @@
 import unittest
 from nextactions.list import List
 from nextactions.trello import Trello
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from nextactions.card import Card
 
 
@@ -32,30 +32,24 @@ class TestList(unittest.TestCase):
         )
 
     def testGetCards(self):
-        mock = MagicMock(return_value=[self._getCardJson()])
-        self.trello.get = mock
-        cards = self.list.getCards()
-        self.assertEqual(len(cards), 1)
-        self.assertEqual(cards[0].id, "123")
-        self.assertEqual(cards[0].name, "Card")
-
-    def _getCardJson(self, override={}):
-        defaults = {
+        card_json = {
             'id': "123",
             'name': "Card",
             'idBoard': "456",
             'desc': "Test",
             'url': "fake"
         }
-        return {**defaults, **override}
+        self.trello.get = MagicMock(return_value=[card_json])
+        cards = self.list.getCards()
+        self.assertEqual(len(cards), 1)
+        self.assertEqual(cards[0].id, "123")
 
     def testGetTopCardForEmptyListIsNone(self):
         self.list.getCards = MagicMock(return_value=[])
         self.assertIsNone(self.list.getTopCard())
 
-    def testGetTopCard(self):
-        card1 = Card(None, self._getCardJson())
-        card2 = Card(None, self._getCardJson({'id': "234"}))
+    @patch('nextactions.card.Card')
+    @patch('nextactions.card.Card')
+    def testGetTopCard(self, card1, card2):
         self.list.getCards = MagicMock(return_value=[card1, card2])
-        top_card = self.list.getTopCard()
-        self.assertEqual(top_card.id, card1.id)
+        self.assertEqual(self.list.getTopCard(), card1)
