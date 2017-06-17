@@ -11,6 +11,6 @@ install:
   - pip install coveralls
 # command to run tests
 script:
-  coverage run --omit=venv/*,~/virtualenv/* -m unittest
+  coverage run --source=nextactions -m unittest
 after_success:
   coveralls
