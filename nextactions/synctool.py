@@ -34,7 +34,7 @@ class SyncTool:
     def syncCard(self, card):
         card_board = self._trello.getBoardById(card.board_id)
         gtd_board = self._trello.getBoardById(self._config.get('gtd_board_id'))
-        next_actions_list = gtd_board.getListByName('Next Actions')
+        next_actions_list = gtd_board.getListByName('Inbox')
 
         name = card_board.name + " - " + card.name
         description = card.url + "\n\n" + Card.AUTO_GENERATED_TEXT
