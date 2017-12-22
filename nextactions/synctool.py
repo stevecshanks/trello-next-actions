@@ -28,7 +28,9 @@ class SyncTool:
         for board in self.getProjectBoards():
             todo_list = board.getListByName('Todo')
             if todo_list is not None:
-                todo_cards.append(todo_list.getTopCard())
+                top_card = todo_list.getTopCard()
+                if top_card is not None:
+                    todo_cards.append(top_card)
         return todo_cards
 
     def syncCard(self, card):

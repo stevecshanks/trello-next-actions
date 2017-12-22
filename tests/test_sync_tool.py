@@ -58,6 +58,13 @@ class TestSyncTool(unittest.TestCase):
         self.sync_tool.getProjectBoards = MagicMock(return_value=[self.board])
         self.assertEqual(self.sync_tool.getTopTodoCards(), [])
 
+    @patch('nextactions.list.List')
+    def testGetTopTodoCardsForEmptyList(self, project_list):
+        self.board.getListByName = MagicMock(return_value=project_list)
+        project_list.getTopCard.return_value = None
+        self.sync_tool.getProjectBoards = MagicMock(return_value=[self.board])
+        self.assertEqual(self.sync_tool.getTopTodoCards(), [])
+
     @patch('nextactions.card.Card', autospec=True)
     def testGetTopTodoCards(self, card):
         boards = [self.board, self.board]
