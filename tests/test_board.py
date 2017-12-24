@@ -41,3 +41,16 @@ class TestBoard(unittest.TestCase):
         self._mockGetResponse()
         next_actions = self.board.getListByName('Next Actions')
         self.assertEqual(next_actions.name, 'Next Actions')
+
+    def testGetCards(self):
+        card_json = {
+            'id': "123",
+            'name': "Card",
+            'idBoard': "456",
+            'desc': "Test",
+            'url': "fake"
+        }
+        self.trello.get = MagicMock(return_value=[card_json])
+        cards = self.board.getCards()
+        self.assertEqual(len(cards), 1)
+        self.assertEqual(cards[0].id, "123")
