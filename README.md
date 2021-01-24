@@ -1,7 +1,7 @@
 # trello-next-actions
 
-[![Build Status](https://travis-ci.org/stevecshanks/trello-next-actions.svg?branch=master)](https://travis-ci.org/stevecshanks/trello-next-actions)
-[![Coverage Status](https://coveralls.io/repos/github/stevecshanks/trello-next-actions/badge.svg?branch=master)](https://coveralls.io/github/stevecshanks/trello-next-actions?branch=master)
+[![Build Status](https://travis-ci.org/stevecshanks/trello-next-actions.svg?branch=main)](https://travis-ci.org/stevecshanks/trello-next-actions)
+[![Coverage Status](https://coveralls.io/repos/github/stevecshanks/trello-next-actions/badge.svg?branch=main)](https://coveralls.io/github/stevecshanks/trello-next-actions?branch=main)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/436446417d784d229f8bd76e8c9188c8)](https://www.codacy.com/app/stevecshanks/trello-next-actions?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=stevecshanks/trello-next-actions&amp;utm_campaign=Badge_Grade)
 
 ## Introduction
